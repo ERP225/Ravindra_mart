@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Order Summary</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ccc; padding: 10px; text-align: center; }
+        th { background: #f2f2f2; }
+    </style>
+</head>
+<body>
+
+<h2>🎉 Order Placed Successfully!</h2>
+<p><b>Order Number:</b> {{ order_number }}</p>
+
+<table>
+    <tr>
+        <th>Product</th>
+        <th>Price</th>
+        <th>Qty</th>
+        <th>Total</th>
+    </tr>
+    {% set grand_total = 0 %}
+    {% for item in items %}
+    <tr>
+        <td>{{ item.name }}</td>
+        <td>₹{{ item.price }}</td>
+        <td>{{ item.quantity }}</td>
+        <td>₹{{ item.price * item.quantity }}</td>
+    </tr>
+    {% set grand_total = grand_total + (item.price * item.quantity) %}
+    {% endfor %}
+    <tr>
+        <td colspan="3"><b>Grand Total</b></td>
+        <td><b>₹{{ grand_total }}</b></td>
+    </tr>
+</table>
+
+<br>
+<a href="/user_dashboard">Back to Home</a>
+
+</body>
+</html>

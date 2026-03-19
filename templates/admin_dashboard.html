@@ -1,0 +1,78 @@
+<style>
+body { font-family: Arial; }
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 20px;
+    padding: 20px;
+}
+
+.card {
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    padding: 10px;
+    text-align: center;
+    background: #fff;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    transition: 0.3s;
+}
+
+.card:hover { transform: scale(1.05); }
+
+.card img {
+    width: 100%;
+    height: 140px;
+    object-fit: cover;
+    border-radius: 10px;
+}
+
+.name { font-weight: bold; margin-top: 10px; }
+.price { color: green; margin: 5px 0; }
+
+button {
+    padding: 5px 10px;
+    border: none;
+    background: blue;
+    color: white;
+    border-radius: 5px;
+    cursor: pointer;
+}
+</style>
+
+<h2>Add Product</h2>
+
+<form action="/add_product" method="POST" enctype="multipart/form-data">
+    <input type="text" name="name" placeholder="Product Name" required><br>
+    <input type="number" name="price" placeholder="Product Price (₹)" required><br>
+    <input type="number" name="quantity" placeholder="Stock" required><br>
+    <textarea name="description"></textarea><br>
+    <input type="file" name="image" required><br>
+    <button>Add Product</button>
+</form>
+
+<div class="grid">
+{% for product in products %}
+    <div class="card">
+
+        <!-- ✅ FIXED IMAGE -->
+        <img src="{{ url_for('static', filename=product.image) }}">
+
+        <div class="name">{{ product.name }}</div>
+        <div class="price">₹{{ product.price }}</div>
+        <div class="quantity">Qty: {{ product.quantity }}</div>
+        <div class="description">{{ product.description }}</div>
+
+        {% if request.path == '/admin_dashboard' %}
+            <a href="/delete_product/{{ product.id }}">
+                <button style="background:red;">Delete</button>
+            </a>
+        {% else %}
+            <a href="/add_to_cart/{{ product.id }}">
+                <button>Add to Cart</button>
+            </a>
+        {% endif %}
+
+    </div>
+{% endfor %}
+</div>

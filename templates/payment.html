@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Payment</title>
+    <style>
+        body { font-family: Arial; text-align:center; margin-top:50px; }
+        button { padding:10px 20px; background:green; color:white; border:none; }
+    </style>
+</head>
+<body>
+
+<h2>Order Number: {{ order_number }}</h2>
+
+<h3>Make Payment</h3>
+
+<!-- Fake payment button -->
+<a href="/payment_success/{{ order_number }}">
+    <button>Pay Now</button>
+</a>
+
+<script>
+function pay(){
+    alert("Payment Successful ✅");
+    window.location.href = "/my_orders";
+}
+</script>
+
+</body>
+</html>

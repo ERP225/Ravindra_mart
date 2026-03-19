@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cart - Ravi Mart</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: Arial; margin:20px; }
+        table { width:100%; border-collapse:collapse; margin-top:20px; }
+        th, td { border:1px solid #ccc; padding:10px; text-align:center; }
+        th { background:#f2f2f2; }
+        img.product-img { width:50px; height:50px; object-fit:cover; border-radius:5px; }
+        button { padding:5px 10px; border:none; background:red; color:white; border-radius:5px; cursor:pointer; }
+        .checkout-btn { background:green; padding:10px 20px; font-size:16px; }
+    </style>
+</head>
+<body>
+
+<h2>🛒 Your Cart</h2>
+
+{% if items %}
+<table>
+    <tr>
+        <th>Product</th>
+        <th>Image</th>
+        <th>Price</th>
+        <th>Quantity</th>
+        <th>Total</th>
+        <th>Action</th>
+    </tr>
+    {% for item in items %}
+    <tr>
+        <td>{{ item.name }}</td>
+        <td><img src="{{ url_for('static', filename=item.image) }}" class="product-img"></td>
+        <td>₹{{ item.price }}</td>
+        <td>
+            <form action="/update_cart/{{ item.order_id }}" method="POST">
+                <input type="number" name="qty" value="{{ item.quantity }}" min="1">
+                <button type="submit">Update</button>
+            </form>
+        </td>
+        <td>₹{{ item.price * item.quantity }}</td>
+        <td><a href="/remove_item/{{ item.order_id }}"><button>Remove</button></a></td>
+    </tr>
+    {% endfor %}
+    <tr>
+        <td colspan="4"><b>Grand Total</b></td>
+        <td colspan="2"><b>₹{{ total }}</b></td>
+    </tr>
+</table>
+
+<a href="/checkout"><button class="checkout-btn">Checkout</button></a>
+
+{% else %}
+<p>Your cart is empty.</p>
+{% endif %}
+
+<a href="/user_dashboard">Back to Home</a>
+
+</body>
+</html>

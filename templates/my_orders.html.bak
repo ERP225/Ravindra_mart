@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Orders - Ravi Mart</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: Arial; margin:20px; }
+        h1 { color:#007bff; }
+        table { width:100%; border-collapse:collapse; margin-bottom:30px; }
+        th, td { border:1px solid #ccc; padding:10px; text-align:center; }
+        th { background:#f2f2f2; }
+        .order-number { background:#eee; font-weight:bold; padding:10px; text-align:left; }
+        img.product-img { width:50px; height:50px; object-fit:cover; border-radius:5px; }
+    </style>
+</head>
+<body>
+
+<h1>📦 My Orders</h1>
+
+{% if grouped_orders %}
+    {% for order_number, items in grouped_orders.items() %}
+        <div class="order">
+            <p class="order-number">Order Number: {{ order_number }} | Date: {{ items[0].order_date }}</p>
+            <table>
+                <tr>
+                    <th>Product</th>
+                    <th>Image</th>
+                    <th>Price</th>
+                    <th>Quantity</th>
+                    <th>Total</th>
+					<th>status</th>
+                </tr>
+                {% set grand_total = 0 %}
+                {% for item in items %}
+                <tr>
+                    <td>{{ item.product_name }}</td>
+                    <td><img src="{{ url_for('static', filename=item.product_image) }}" class="product-img"></td>
+                    <td>₹{{ item.price }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>₹{{ item.price * item.quantity }}</td>
+					<td>    {% if item.status == 'Pending' %}
+					<span style="color:orange;">Pending</span>
+					 {% else %}
+					 <span style="color:green;">Delivered</span>
+					{% endif %}
+</td>
+                </tr>
+                {% set grand_total = grand_total + (item.price * item.quantity) %}
+                {% endfor %}
+                <tr>
+                    <td colspan="4"><b>Grand Total</b></td>
+                    <td><b>₹{{ grand_total }}</b></td>
+                </tr>
+            </table>
+        </div>
+    {% endfor %}
+{% else %}
+    <p>You have not placed any orders yet.</p>
+{% endif %}
+
+<a href="/user_dashboard">Back to Home</a>
+
+</body>
+</html>

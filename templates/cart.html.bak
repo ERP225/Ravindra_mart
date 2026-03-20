@@ -1,172 +1,80 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
-/* Navbar */
-.navbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: #232f3e;
-    padding: 10px 20px;
-    color: white;
-}
-.navbar a {
-    color: white;
-    text-decoration: none;
-    margin: 0 10px;
-}
-.logo { font-size: 20px; font-weight: bold; }
+    <title>Cart - Ravi Mart</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: Arial; margin:20px; }
+        table { width:100%; border-collapse:collapse; margin-top:20px; }
+        th, td { border:1px solid #ccc; padding:10px; text-align:center; }
+        th { background:#f2f2f2; }
+        img.product-img { width:50px; height:50px; object-fit:cover; border-radius:5px; }
+        button { padding:5px 10px; border:none; background:red; color:white; border-radius:5px; cursor:pointer; }
+        .checkout-btn { background:green; padding:10px 20px; font-size:16px; }
+		 .btn-back {
+        background: #3498db;
+        color: white;
+        border: none;
+    }
+    .btn-back:hover { background: #217dbb; }
+	  .btn-action {
+        background: #27ae60;
+        color: white;
+        border: none;
+    }
+    .btn-action:hover { background: #219150; }
 
-/* Table */
-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-th, td { padding: 10px; text-align: center; border-bottom: 1px solid #ccc; }
-img.product-img { width: 50px; height: 50px; object-fit: cover; }
+    table { width:100%; border-collapse:collapse; margin-bottom:20px; }
+    th, td { padding:12px; text-align:center; border-bottom:1px solid #ccc; }
+    th { background:#2c3e50; color:white; }
+    tr:nth-child(even) { background:#f9f9f9; }
 
-/* Buttons */
-button { padding: 5px 10px; border: none; color: white; cursor: pointer; }
-button.update { background: #007bff; }
-button.remove { background: red; }
-button.checkout { background: green; font-size: 16px; padding: 10px 20px; }
-
-/* Summary */
-#summary { margin-top: 15px; font-size: 18px; }
-
-/* Responsive */
-@media screen and (max-width: 600px) {
-    table, thead, tbody, th, td, tr { display: block; }
-    th { display: none; }
-    td { text-align: right; padding-left: 50%; position: relative; }
-    td::before { content: attr(data-label); position: absolute; left: 10px; text-align: left; font-weight: bold; }
-}
-</style>
+    .actions { display:flex; justify-content:space-between; flex-wrap:wrap; margin-top:20px; }
+    .empty-msg { text-align:center; font-size:18px; color:#777; margin:20px 0; }
+    </style>
 </head>
 <body>
 
-<!-- Navbar -->
-<div class="navbar">
-    <div class="logo">🛒 Ravi Mart</div>
-    <div>
-        <a href="/user_dashboard">Home</a>
-        <a href="/cart">Cart <span class="badge cart-badge">{{ items|length }}</span></a>
-        <a href="/my_orders">My Orders</a>
-        <a href="/logout">Logout</a>
-    </div>
-</div>
-
 <h2>🛒 Your Cart</h2>
 
-<!-- Summary -->
-<div id="summary">
-    Total Items: <span id="total-items">{{ items|length }}</span> | Grand Total: ₹<span id="grand-total">{{ total }}</span>
-</div>
-
 {% if items %}
-<table id="cart-table">
-<thead>
-<tr>
-    <th>Image</th>
-    <th>Name</th>
-    <th>Price</th>
-    <th>Qty</th>
-    <th>Total</th>
-    <th>Action</th>
-</tr>
-</thead>
-<tbody>
-{% for item in items %}
-<tr data-order="{{ item.order_id }}" data-price="{{ item.price }}" data-stock="{{ item.stock }}">
-    <td>
-        <img src="{{ url_for('static', filename=item.image) }}" class="product-img">
-    </td>
-    <td>{{ item.name }}</td>
-    <td>₹{{ item.price }}</td>
-    <td>
-        <input type="number" name="qty" class="qty" value="{{ item.quantity }}" min="1">
-        <button class="update">Update</button>
-    </td>
-    <td>₹<span class="item-total">{{ item.price * item.quantity }}</span></td>
-    <td><button class="remove">Remove</button></td>
-</tr>
-{% endfor %}
-</tbody>
+<table>
+    <tr>
+        <th>Product</th>
+        <th>Image</th>
+        <th>Price</th>
+        <th>Quantity</th>
+        <th>Total</th>
+        <th>Action</th>
+    </tr>
+    {% for item in items %}
+    <tr>
+        <td>{{ item.name }}</td>
+        <td><img src="{{ url_for('static', filename=item.image) }}" class="product-img"></td>
+        <td>₹{{ item.price }}</td>
+        <td>
+            <form action="/update_cart/{{ item.order_id }}" method="POST">
+                <input type="number" name="qty" value="{{ item.quantity }}" min="1">
+                <button type="submit">Update</button>
+            </form>
+        </td>
+        <td>₹{{ item.price * item.quantity }}</td>
+        <td><a href="/remove_item/{{ item.order_id }}"><button>Remove</button></a></td>
+    </tr>
+    {% endfor %}
+    <tr>
+        <td colspan="4"><b>Grand Total</b></td>
+        <td colspan="2"><b>₹{{ total }}</b></td>
+    </tr>
 </table>
 
-<a href="/checkout"><button class="checkout">Checkout</button></a>
+<a href="/checkout"><button class="checkout-btn">Checkout</button></a>
 
 {% else %}
 <p>Your cart is empty.</p>
 {% endif %}
 
-<script>
-// Function to update totals
-function updateSummary() {
-    let grandTotal = 0;
-    let totalItems = 0;
+ <a class="btn-back" onclick="window.location.href='/user_dashboard'">← Back to Home</a>
 
-    document.querySelectorAll('#cart-table tbody tr').forEach(row => {
-        let price = parseFloat(row.dataset.price);
-        let qtyInput = row.querySelector('.qty');
-        let qty = parseInt(qtyInput.value) || 0;
-        let stock = parseInt(row.dataset.stock);
-
-        // Stock validation
-        if(qty > stock) {
-            alert(`Only ${stock} items available in stock.`);
-            qtyInput.value = stock;
-            qty = stock;
-        }
-
-        row.querySelector('.item-total').textContent = (price * qty).toFixed(2);
-        grandTotal += price * qty;
-        totalItems += qty;
-    });
-
-    document.getElementById('grand-total').textContent = grandTotal.toFixed(2);
-    document.getElementById('total-items').textContent = totalItems;
-}
-
-// Update quantity via AJAX
-document.querySelectorAll('.update').forEach(btn => {
-    btn.addEventListener('click', function() {
-        let row = btn.closest('tr');
-        let orderId = row.dataset.order;
-        let qty = row.querySelector('.qty').value;
-
-        fetch(`/update_cart/${orderId}`, {
-            method: 'POST',
-            headers: {'Content-Type':'application/x-www-form-urlencoded'},
-            body: 'qty=' + qty
-        }).then(res => {
-            if(res.ok) updateSummary();
-            else alert("Cannot update: exceeds stock or server error");
-        });
-    });
-});
-
-// Remove item via AJAX
-document.querySelectorAll('.remove').forEach(btn => {
-    btn.addEventListener('click', function() {
-        let row = btn.closest('tr');
-        let orderId = row.dataset.order;
-
-        fetch(`/remove_item/${orderId}`).then(res => {
-            if(res.ok || res.status===200) {
-                row.remove();
-                updateSummary();
-            }
-        });
-    });
-});
-
-// Update totals when qty manually changes
-document.querySelectorAll('.qty').forEach(input => {
-    input.addEventListener('input', updateSummary);
-});
-
-// Initial summary update
-updateSummary();
-</script>
 </body>
 </html>

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en"> 
+<head> 
+<meta charset="UTF-8"> 
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sale Website</title> 
+
+<!-- Bootstrap CDN --> 
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<!-- Google Font -->
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+<style> 
+body { 
+    background: linear-gradient(to right, #f8f9fa, #e9ecef);
+    font-family: 'Poppins', sans-serif;
+}
+
+/* Navbar */
+.navbar-brand {
+    font-size: 26px;
+    font-weight: 600;
+}
+
+/* Hero Section */
+.hero { 
+    height: 80vh; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    flex-direction: column; 
+    text-align: center; 
+}
+
+/* Heading */
+.hero h1 {
+    font-size: 48px;
+    font-weight: 600;
+    color: #343a40;
+}
+
+.hero p {
+    font-size: 18px;
+    color: #6c757d;
+}
+
+/* Buttons */
+.btn-custom { 
+    margin: 10px; 
+    width: 220px; 
+    border-radius: 30px;
+    font-weight: 500;
+    transition: 0.3s;
+}
+
+/* Hover Effects */
+.btn-primary:hover {
+    background-color: #0b5ed7;
+    transform: translateY(-3px);
+}
+
+.btn-success:hover {
+    background-color: #157347;
+    transform: translateY(-3px);
+}
+
+.btn-warning:hover {
+    background-color: #d39e00;
+    transform: translateY(-3px);
+}
+
+/* Card Style Container */
+.hero-box {
+    background: white;
+    padding: 40px;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+/* Footer */
+footer {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+}
+</style> 
+</head>
+
+<body> 
+
+<!-- 🔷 NAVBAR -->
+<div class="bg-dark text-white text-center p-3 shadow">
+<div class="container d-flex justify-content-between align-items-center">
+<a class="navbar-brand text-white text-decoration-none" href="/">🛒 Ravi Mart</a> 
+</div>
+</div>
+
+<!-- 🔷 HERO SECTION -->
+<div class="hero">
+    <div class="hero-box">
+        <h1>Welcome to Ravi Mart 🛍️</h1>
+        <p>Your one-stop shop for fresh and quality products</p>
+
+        <div class="mt-4"> 
+            <a href="/user_login" class="btn btn-primary btn-lg btn-custom">User Login</a> 
+            <a href="/register" class="btn btn-success btn-lg btn-custom">Register</a>
+            <a href="/admin_login" class="btn btn-warning btn-lg btn-custom">Admin Login</a> 
+        </div>
+    </div>
+</div>
+
+<!-- 🔷 FOOTER -->
+<footer class="bg-dark text-white text-center p-3"> 
+© 2026 Sale Website | All Rights Reserved 
+</footer> 
+
+</body>
+</html>

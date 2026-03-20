@@ -3,24 +3,50 @@
 <head>
     <title>Payment</title>
     <style>
-        body { font-family: Arial; text-align:center; margin-top:50px; }
-        button { padding:10px 20px; background:green; color:white; border:none; }
+        body { 
+            font-family: Arial, sans-serif; 
+            text-align: center; 
+            margin-top: 50px; 
+            background: #f5f7fb; 
+        }
+        button { 
+            padding: 12px 25px; 
+            background: #27ae60; 
+            color: white; 
+            border: none; 
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer; 
+        }
+        button:hover {
+            background: #2ecc71;
+        }
+        .container {
+            background: #fff;
+            display: inline-block;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
     </style>
 </head>
 <body>
 
-<h2>💳 Payment Page</h2>
+<div class="container">
+    <h2>Order Number: {{ order_number }}</h2>
+    <h3>Make Payment</h3>
 
-<p>Order Number: <b>{{ order_number }}</b></p>
-<p>Total Amount: Pay via UPI / Card (Demo)</p>
-
-<button onclick="pay()">Pay Now</button>
+    <!-- Pay Now button -->
+    <a href="{{ url_for('payment_success', order_number=order_number) }}">
+        <button type="button">Pay Now</button>
+    </a>
+</div>
 
 <script>
-function pay(){
+const payButton = document.querySelector("button");
+payButton.addEventListener("click", function(){
     alert("Payment Successful ✅");
-    window.location.href = "/my_orders";
-}
+});
 </script>
 
 </body>

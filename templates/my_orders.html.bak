@@ -1,64 +1,64 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>My Orders - Ravi Mart</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-        body { font-family: Arial; margin:20px; }
-        h1 { color:#007bff; }
-        table { width:100%; border-collapse:collapse; margin-bottom:30px; }
-        th, td { border:1px solid #ccc; padding:10px; text-align:center; }
-        th { background:#f2f2f2; }
-        .order-number { background:#eee; font-weight:bold; padding:10px; text-align:left; }
-        img.product-img { width:50px; height:50px; object-fit:cover; border-radius:5px; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Orders - Ravi Mart</title>
+<style>
+body { font-family: 'Segoe UI', sans-serif; background:#f5f7fb; margin:0; padding:0; }
+.container { max-width:1000px; margin:20px auto; padding:20px; background:#fff; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.1); }
+h2 { text-align:center; margin-bottom:20px; }
+table { width:100%; border-collapse:collapse; }
+th, td { padding:12px; text-align:center; border-bottom:1px solid #ccc; }
+th { background:#2c3e50; color:white; }
+tr:nth-child(even) { background:#f9f9f9; }
+img.product-img { width:60px; height:60px; object-fit:cover; border-radius:8px; }
+.status { padding:5px 10px; border-radius:6px; color:white; font-weight:500; }
+.status.Pending { background:#f39c12; }
+.status.Completed { background:#27ae60; }
+.status.Cancelled { background:#e74c3c; }
+.back-btn { background:#555; color:white; border:none; padding:10px 20px; border-radius:8px; cursor:pointer; margin-top:15px; }
+</style>
 </head>
 <body>
+<div class="container">
+<h2>📝 My Orders</h2>
 
-<h1>📦 My Orders</h1>
-
-{% if grouped_orders %}
-    {% for order_number, items in grouped_orders.items() %}
-        <div class="order">
-            <p class="order-number">Order Number: {{ order_number }} | Date: {{ items[0].order_date }}</p>
-            <table>
-                <tr>
-                    <th>Product</th>
-                    <th>Image</th>
-                    <th>Price</th>
-                    <th>Quantity</th>
-                    <th>Total</th>
-					<th>status</th>
-                </tr>
-                {% set grand_total = 0 %}
-                {% for item in items %}
-                <tr>
-                    <td>{{ item.product_name }}</td>
-                    <td><img src="{{ url_for('static', filename=item.product_image) }}" class="product-img"></td>
-                    <td>₹{{ item.price }}</td>
-                    <td>{{ item.quantity }}</td>
-                    <td>₹{{ item.price * item.quantity }}</td>
-					<td>    {% if item.status == 'Pending' %}
-					<span style="color:orange;">Pending</span>
-					 {% else %}
-					 <span style="color:green;">Delivered</span>
-					{% endif %}
-</td>
-                </tr>
-                {% set grand_total = grand_total + (item.price * item.quantity) %}
-                {% endfor %}
-                <tr>
-                    <td colspan="4"><b>Grand Total</b></td>
-                    <td><b>₹{{ grand_total }}</b></td>
-                </tr>
-            </table>
-        </div>
+{% if orders %}
+<table>
+    <tr>
+        <th>Order No</th>
+        <th>Product</th>
+        <th>Image</th>
+        <th>Qty</th>
+        <th>Price</th>
+        <th>Order Status</th>
+        <th>Payment Status</th>
+        <th>Ordered On</th>
+    </tr>
+    {% for order in orders %}
+    <tr>
+        <td>{{ order.order_number }}</td>
+        <td>{{ order.name }}</td>
+        <td><img src="{{ url_for('static', filename=order.image) }}" class="product-img"></td>
+        <td>{{ order.quantity }}</td>
+        <td>₹{{ order.price * order.quantity }}</td>
+        <td><span class="status {{ order.status }}">{{ order.status }}</span></td>
+        <td>
+            <span class="status {{ order.payment_status }}">{{ order.payment_status }}</span>
+        </td>
+        <td>{{ order.created_at }}</td>
+    </tr>
     {% endfor %}
+</table>
 {% else %}
-    <p>You have not placed any orders yet.</p>
+<p style="text-align:center; font-size:18px; color:#777;">You have no orders yet.</p>
 {% endif %}
 
-<a href="/user_dashboard">Back to Home</a>
-
+<a href="{{ url_for('user_dashboard') }}"><button class="back-btn">Back to Home</button></a>
+</div>
 </body>
 </html>
+
+
+

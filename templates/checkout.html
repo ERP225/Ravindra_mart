@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Checkout - Ravi Mart</title>
+<style>
+    body { font-family: 'Segoe UI', sans-serif; background:#f5f7fb; margin:0; padding:0; }
+    .container { max-width:900px; margin:20px auto; padding:20px; background:#fff; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.1); }
+    h2 { text-align:center; margin-bottom:10px; }
+    
+    /* Buttons */
+    .btn-back, .btn-action {
+        padding: 12px 25px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-size: 16px;
+        cursor: pointer;
+        display: inline-block;
+        text-align: center;
+        margin: 5px 0;
+    }
+    .btn-back {
+        background: #3498db;
+        color: white;
+        border: none;
+    }
+    .btn-back:hover { background: #217dbb; }
+
+    .btn-action {
+        background: #27ae60;
+        color: white;
+        border: none;
+    }
+    .btn-action:hover { background: #219150; }
+
+    table { width:100%; border-collapse:collapse; margin-bottom:20px; }
+    th, td { padding:12px; text-align:center; border-bottom:1px solid #ccc; }
+    th { background:#2c3e50; color:white; }
+    tr:nth-child(even) { background:#f9f9f9; }
+
+    .actions { display:flex; justify-content:space-between; flex-wrap:wrap; margin-top:20px; }
+    .empty-msg { text-align:center; font-size:18px; color:#777; margin:20px 0; }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🛒 Checkout</h2>
+
+    <!-- Back to Home always visible -->
+   
+    {% if items %}
+        <!-- Table of cart items -->
+        <table>
+            <tr>
+                <th>Product</th>
+                <th>Price</th>
+                <th>Quantity</th>
+                <th>Total</th>
+            </tr>
+            {% for item in items %}
+            <tr>
+                <td>{{ item.name }}</td>
+                <td>₹{{ item.price }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>₹{{ item.price * item.quantity }}</td>
+            </tr>
+            {% endfor %}
+            <tr>
+                <td colspan="3"><b>Grand Total</b></td>
+                <td><b>₹{{ total }}</b></td>
+            </tr>
+        </table>
+
+        <!-- Actions: Back to Cart + Payment -->
+        <div class="actions">
+            <a class="btn-back" href="{{ url_for('cart') }}">← Back to Cart</a>
+            <a class="btn-action" href="/payment">Proceed to Payment</a>
+        </div>
+
+    {% else %}
+        <!-- Empty cart message -->
+        <p class="empty-msg">Your cart is empty.</p>
+    {% endif %}
+
+</div>
+
+</body>
+</html>

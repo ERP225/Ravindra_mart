@@ -11,6 +11,31 @@
         img.product-img { width:50px; height:50px; object-fit:cover; border-radius:5px; }
         button { padding:5px 10px; border:none; background:red; color:white; border-radius:5px; cursor:pointer; }
         .checkout-btn { background:green; padding:10px 20px; font-size:16px; }
+		.btn-back {
+    padding: 8px 15px;
+    background: #3498db;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-bottom: 10px;
+}
+
+    .btn-back:hover { background: #217dbb; }
+	  .btn-action {
+        background: #27ae60;
+        color: white;
+        border: none;
+    }
+    .btn-action:hover { background: #219150; }
+
+    table { width:100%; border-collapse:collapse; margin-bottom:20px; }
+    th, td { padding:12px; text-align:center; border-bottom:1px solid #ccc; }
+    th { background:#2c3e50; color:white; }
+    tr:nth-child(even) { background:#f9f9f9; }
+
+    .actions { display:flex; justify-content:space-between; flex-wrap:wrap; margin-top:20px; }
+    .empty-msg { text-align:center; font-size:18px; color:#777; margin:20px 0; }
     </style>
 </head>
 <body>
@@ -54,7 +79,7 @@
 <p>Your cart is empty.</p>
 {% endif %}
 
-<a href="/user_dashboard">Back to Home</a>
+ <a class="btn-back" onclick="window.location.href='/user_dashboard'">← Back to Home</a>
 
 </body>
 </html>

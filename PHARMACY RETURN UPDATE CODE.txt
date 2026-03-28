@@ -1,0 +1,38 @@
+ PHARMACY RETURN UPDATE CODE
+
+SELECT
+                  wvf_getmednmstd(medid)                                 txtissued_item_searchid,
+                  medid                                                  txtissued_item_searchid_id,
+                  wvf_getmednmstd(medid)                                 txtmednm,
+                  batchno                                                txtbatch_no_searchid,
+                  batchno                                                txtbatch_no_searchid_id,
+                 
+                  act_mrp                                                txtact_mrp,
+                  (SELECT MRP FROM INVENTORY.DMEDDTLS WHERE 
+                  BATCHNO=D.BATCHNO AND MEDID=D.MEDID AND SUBDEPTID='SD000126')CUUMRP
+                
+              FROM
+                  inventory.dissuedtlsp d
+       WHERE
+           missueid IN (
+               SELECT
+                   missueid
+               FROM
+                   inventory.pretmast h, inventory.pretdtls d
+               WHERE
+                       h.pretid = d.pretid
+                   AND pretno IN ( 25000211, 25000212, 25000209, 25000245, 25000208,
+                                   25000261, 25000238, 25000210, 25000227, 25000210 )
+                       AND nvl(pharmasaverecived, 0) = 0
+           )
+           AND ( medid, batchno ) IN (
+               SELECT
+                   d.medid, batchno
+               FROM
+                   inventory.pretmast h, inventory.pretdtls d
+               WHERE
+                       h.pretid = d.pretid
+                   AND pretno IN ( 25000211, 25000212, 25000209, 25000245, 25000208,
+                                   25000261, 25000238, 25000210, 25000227, 5000210 )
+                       AND nvl(pharmasaverecived, 0) = 0
+           )

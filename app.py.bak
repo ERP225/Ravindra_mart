@@ -221,7 +221,7 @@ def update_order_status(order_id, status):
 @app.route("/admin_logout")
 def admin_logout():
     session.pop("admin", None)  # only remove admin
-    return redirect("/")
+    return redirect("/admin_login")
 
 # ---------------- USER REGISTER ----------------
 @app.route("/register", methods=["GET", "POST"])

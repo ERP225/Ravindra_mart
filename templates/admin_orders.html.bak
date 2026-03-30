@@ -97,7 +97,7 @@ function updateTracking(order_id,status){
 <td><span class="status {{ order.status }}">{{ order.status }}</span></td>
 <td><span class="status {{ order.payment_status }}">{{ order.payment_status }}</span></td>
 <td>
-{% if order.status in ['Cancelled'] %}
+{% if order.status in ['Completed','Cancelled'] %}
 <select disabled><option>{{ order.status }}</option></select>
 {% else %}
 <select onchange="updateTracking({{ order.id }}, this.value)">

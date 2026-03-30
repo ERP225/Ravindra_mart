@@ -22,7 +22,6 @@
         box-shadow: 0 6px 20px rgba(0,0,0,0.1);
         width: 100%;
         max-width: 400px;
-        box-sizing: border-box; /* ensures padding is inside container */
     }
 
     .register-box h2 {
@@ -38,12 +37,11 @@
 
     .input-group input {
         width: 100%;
-        padding: 12px 12px 12px 40px; /* left padding for icon */
+        padding: 12px 12px 12px 40px;
         border: 1px solid #ccc;
         border-radius: 6px;
         font-size: 15px;
-        box-sizing: border-box; /* ensures padding stays inside input */
-        display: block; /* fixes overflow */
+        transition: border 0.3s;
     }
 
     .input-group input:focus {
@@ -58,7 +56,6 @@
         transform: translateY(-50%);
         color: #888;
         font-size: 16px;
-        pointer-events: none; /* icon doesn't block typing */
     }
 
     .register-box button {
@@ -109,7 +106,7 @@
         text-decoration: underline;
     }
 </style>
-<!-- Font Awesome for icons -->
+<!-- Use Font Awesome for icons -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>

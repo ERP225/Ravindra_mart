@@ -110,7 +110,7 @@ footer {
 
        <div class="mt-4 d-flex flex-column align-items-center">
     <a href="/user_login" class="btn btn-primary btn-lg btn-custom">User Login</a>
-   <!-- <a href="/otp_login" class="btn btn-info btn-lg btn-custom">Login with OTP</a> <!-- NEW -->
+    <a href="/otp_login" class="btn btn-info btn-lg btn-custom">Login with OTP</a> <!-- NEW -->
     <a href="/register" class="btn btn-success btn-lg btn-custom">Register</a>
     <a href="/admin_login" class="btn btn-warning btn-lg btn-custom">Admin Login</a>
 </div>

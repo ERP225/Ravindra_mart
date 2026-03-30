@@ -1,46 +1,47 @@
-from flask import Flask, render_template, request, redirect, session, flash, url_for,jsonify
+from flask import Flask, render_template, request, redirect, session, flash, url_for
 import sqlite3
 import os
-import uuid   # add at top
-
+import uuid
 from werkzeug.security import generate_password_hash, check_password_hash
+
 app = Flask(__name__)
 app.secret_key = "secret123"
 
 DB_NAME = "database.db"
 
-# ---------------- DB CONNECTION ----------------
+UPLOAD_FOLDER = "static/images"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# DATABASE CONNECTION
 def get_db():
     conn = sqlite3.connect(DB_NAME)
     conn.row_factory = sqlite3.Row
     return conn
 
-# ---------------- CREATE TABLES ----------------
+# CREATE TABLES
 def create_tables():
+
     db = get_db()
     cursor = db.cursor()
 
-    # USERS
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS users (
+    CREATE TABLE IF NOT EXISTS users(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE,
         password TEXT
     )
     """)
 
-    # ADMIN
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS admin (
+    CREATE TABLE IF NOT EXISTS admin(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE,
         password TEXT
     )
     """)
 
-    # PRODUCTS
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS products (
+    CREATE TABLE IF NOT EXISTS products(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT,
         price REAL,
@@ -50,9 +51,8 @@ def create_tables():
     )
     """)
 
-    # CART
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS orders (
+    CREATE TABLE IF NOT EXISTS orders(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER,
         product_id INTEGER,
@@ -60,461 +60,502 @@ def create_tables():
     )
     """)
 
-    # ORDER HISTORY
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS order_history (
+    CREATE TABLE IF NOT EXISTS order_history(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-		order_number TEXT,
-		user_id INTEGER,
-		product_id INTEGER,
-		quantity INTEGER,
-		price REAL,
-		status TEXT,
-		payment_status TEXT,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        order_number TEXT,
+        user_id INTEGER,
+        product_id INTEGER,
+        quantity INTEGER,
+        price REAL,
+        status TEXT,
+        payment_status TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
 
     db.commit()
 
-    # DEFAULT ADMIN
+    # Default Admin
     cursor.execute("SELECT * FROM admin WHERE username=?", ("admin",))
     if not cursor.fetchone():
-        cursor.execute("INSERT INTO admin (username, password) VALUES (?, ?)",
-                       ("admin", generate_password_hash("admin123")))
+        cursor.execute(
+            "INSERT INTO admin (username,password) VALUES (?,?)",
+            ("admin", generate_password_hash("admin123"))
+        )
         db.commit()
-        print("✅ Admin created: admin / admin123")
-    else:
-        print("✅ Admin already exists")
 
     db.close()
 
 create_tables()
 
-# ---------------- HOME ----------------
+# HOME
 @app.route("/")
 def home():
     return render_template("home.html")
 
-# ---------------- ADMIN LOGIN ----------------
+# ADMIN LOGIN
 @app.route("/admin_login", methods=["GET", "POST"])
 def admin_login():
+
     if request.method == "POST":
-        db = get_db()
-        cursor = db.cursor()
 
         username = request.form["username"]
         password = request.form["password"]
+
+        db = get_db()
+        cursor = db.cursor()
 
         cursor.execute("SELECT * FROM admin WHERE username=?", (username,))
         admin = cursor.fetchone()
 
         if admin and check_password_hash(admin["password"], password):
+
             session["admin"] = admin["id"]
             return redirect("/admin_dashboard")
-        else:
-            flash("Invalid admin credentials")
+
+        flash("Invalid credentials")
 
     return render_template("admin_login.html")
 
-# ---------------- ADMIN DASHBOARD ----------------
+# ADMIN DASHBOARD
 @app.route("/admin_dashboard")
 def admin_dashboard():
-    if 'admin' not in session:
+
+    if "admin" not in session:
         return redirect("/admin_login")
 
     db = get_db()
     cursor = db.cursor()
+
     cursor.execute("SELECT * FROM products")
     products = cursor.fetchall()
 
-    return render_template("admin_dashboard.html", products=products)
-#-----------------Admin Orders---------------------
+    cursor.execute("SELECT COUNT(*) FROM order_history")
+    total_orders = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COUNT(*) FROM users")
+    total_users = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COUNT(*) FROM products")
+    total_products = cursor.fetchone()[0]
+
+    cursor.execute("""
+    SELECT SUM(price*quantity)
+    FROM order_history
+    WHERE payment_status='Paid'
+    """)
+    revenue = cursor.fetchone()[0] or 0
+
+    # SALES GRAPH
+    cursor.execute("""
+    SELECT DATE(created_at), SUM(price*quantity)
+    FROM order_history
+    GROUP BY DATE(created_at)
+    ORDER BY DATE(created_at)
+    """)
+
+    rows = cursor.fetchall()
+
+    labels = [row[0] for row in rows]
+    values = [row[1] for row in rows]
+
+    return render_template(
+        "admin_dashboard.html",
+        products=products,
+        revenue=revenue,
+        total_orders=total_orders,
+        total_users=total_users,
+        total_products=total_products,
+        labels=labels,
+        values=values
+    )
+#ADMIN ORDERS 
 @app.route("/admin_orders")
 def admin_orders():
-    if 'admin' not in session:
+
+    if "admin" not in session:
         return redirect("/admin_login")
 
-    filter_status = request.args.get('filter', 'All')  # get filter from URL, default to 'All'
+    filter_status = request.args.get("filter", "All")
 
     db = get_db()
     cursor = db.cursor()
 
-    # Base query
-    query = """
-        SELECT oh.id, oh.order_number, u.username, p.name, p.image,
-               oh.quantity, oh.price, oh.status,
-               oh.payment_status, oh.created_at
+    # ORDERS LIST
+    if filter_status == "All":
+        cursor.execute("""
+        SELECT oh.id,oh.order_number,u.username,p.name,p.image,
+        oh.quantity,oh.price,oh.status,oh.payment_status,oh.created_at
         FROM order_history oh
-        JOIN users u ON oh.user_id = u.id
-        JOIN products p ON oh.product_id = p.id
-    """
-
-    # Apply filter if not 'All'
-    if filter_status in ['Pending', 'Completed', 'Cancelled']:
-        query += " WHERE oh.status = ?"
-        cursor.execute(query + " ORDER BY oh.created_at DESC", (filter_status,))
+        JOIN users u ON oh.user_id=u.id
+        JOIN products p ON oh.product_id=p.id
+        ORDER BY oh.created_at DESC
+        """)
     else:
-        cursor.execute(query + " ORDER BY oh.created_at DESC")
+        cursor.execute("""
+        SELECT oh.id,oh.order_number,u.username,p.name,p.image,
+        oh.quantity,oh.price,oh.status,oh.payment_status,oh.created_at
+        FROM order_history oh
+        JOIN users u ON oh.user_id=u.id
+        JOIN products p ON oh.product_id=p.id
+        WHERE oh.status=?
+        ORDER BY oh.created_at DESC
+        """, (filter_status,))
 
     orders = cursor.fetchall()
 
-    return render_template("admin_orders.html", orders=orders, filter_status=filter_status)
-# ---------------- ADD PRODUCT ----------------
-UPLOAD_FOLDER = "static/images"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    # TOTAL ORDERS
+    cursor.execute("SELECT COUNT(*) FROM order_history")
+    total_orders = cursor.fetchone()[0]
 
-@app.route("/add_product", methods=["POST"])
-def add_product():
-    if 'admin' not in session:
-        return redirect("/admin_login")
+    # PENDING ORDERS
+    cursor.execute("SELECT COUNT(*) FROM order_history WHERE status='Pending'")
+    pending_orders = cursor.fetchone()[0]
+
+    # COMPLETED ORDERS
+    cursor.execute("SELECT COUNT(*) FROM order_history WHERE status='Completed'")
+    completed_orders = cursor.fetchone()[0]
+
+    # TOTAL REVENUE
+    cursor.execute("""
+    SELECT SUM(price*quantity)
+    FROM order_history
+    WHERE payment_status='Paid'
+    """)
+    revenue = cursor.fetchone()[0] or 0
+
+    return render_template(
+        "admin_orders.html",
+        orders=orders,
+        total_orders=total_orders,
+        pending_orders=pending_orders,
+        completed_orders=completed_orders,
+        revenue=revenue,
+        filter_status=filter_status
+    )
+@app.route("/update_order_status/<int:order_id>/<status>")
+def update_order_status(order_id, status):
 
     db = get_db()
     cursor = db.cursor()
-
-    name = request.form["name"]
-    price = request.form["price"]
-    description = request.form["description"]
-    quantity = request.form["quantity"]
-
-    image = request.files["image"]
-    filename = image.filename
-    image.save(os.path.join(UPLOAD_FOLDER, filename))
-
-    db_path = f"images/{filename}"
 
     cursor.execute("""
-        INSERT INTO products (name, price, description, image, quantity)
-        VALUES (?, ?, ?, ?, ?)
-    """, (name, price, description, db_path, quantity))
+    UPDATE order_history
+    SET status=?
+    WHERE id=?
+    """, (status, order_id))
 
     db.commit()
-    return redirect("/admin_dashboard")
+    return redirect("/admin_orders")
+    
+@app.route("/update_tracking/<int:id>/<status>")
+def update_tracking(id, status):
 
-# ---------------- DELETE PRODUCT ----------------
-@app.route("/delete_product/<int:id>")
-def delete_product(id):
-    if 'admin' not in session:
+    if "admin" not in session:
         return redirect("/admin_login")
 
     db = get_db()
     cursor = db.cursor()
-    cursor.execute("DELETE FROM products WHERE id=?", (id,))
+
+    cursor.execute("""
+    UPDATE order_history
+    SET status=?
+    WHERE id=?
+    """, (status, id))
+
     db.commit()
+    return redirect("/admin_orders")
 
-    return redirect("/admin_dashboard")
-#---------------------cancel Order---------------------
-
-@app.route('/admin/update_order/<int:order_id>/<status>')
-def update_order_status(order_id, status):
-    db = get_db()
-    cursor = db.cursor()
-
-    cursor.execute("UPDATE order_history SET status=? WHERE id=?", (status, order_id))
-    db.commit()
-
-    return redirect(url_for('admin_orders'))
-
-
-
-# ---------------- ADMIN LOGOUT ----------------
-@app.route("/admin_logout")
-def admin_logout():
-    session.pop("admin", None)  # only remove admin
-    return redirect("/")
-
-# ---------------- USER REGISTER ----------------
+# USER REGISTER
 @app.route("/register", methods=["GET", "POST"])
 def register():
+
     if request.method == "POST":
-        db = get_db()
-        cursor = db.cursor()
 
         username = request.form["username"]
         password = generate_password_hash(request.form["password"])
 
-        try:
-            cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
-            db.commit()
-            return redirect("/user_login")
-        except:
-            flash("Username already exists")
-
-    return render_template("user_register.html")
-
-# ---------------- USER LOGIN ----------------
-@app.route("/user_login", methods=["GET", "POST"])
-def user_login():
-    if request.method == "POST":
         db = get_db()
         cursor = db.cursor()
 
+        try:
+            cursor.execute(
+                "INSERT INTO users(username,password) VALUES(?,?)",
+                (username, password)
+            )
+            db.commit()
+
+            return redirect("/user_login")
+
+        except:
+            flash("Username exists")
+
+    return render_template("user_register.html")
+
+# USER LOGIN
+@app.route("/user_login", methods=["GET", "POST"])
+def user_login():
+
+    if request.method == "POST":
+
         username = request.form["username"]
         password = request.form["password"]
+
+        db = get_db()
+        cursor = db.cursor()
 
         cursor.execute("SELECT * FROM users WHERE username=?", (username,))
         user = cursor.fetchone()
 
         if user and check_password_hash(user["password"], password):
+
             session["user"] = user["id"]
             return redirect("/user_dashboard")
-        else:
-            flash("Invalid credentials")
+
+        flash("Invalid login")
 
     return render_template("user_login.html")
 
-# ---------------- USER DASHBOARD ----------------
+# USER DASHBOARD
 @app.route("/user_dashboard")
 def user_dashboard():
-    if 'user' not in session:
+
+    if "user" not in session:
         return redirect("/user_login")
+
+    user_id = session["user"]
 
     db = get_db()
     cursor = db.cursor()
-    user_id = session['user']
 
-    # Get search term from query parameter
-    search = request.args.get('search', '').strip()
-
-    if search:
-        cursor.execute("SELECT * FROM products WHERE name LIKE ?", (f"%{search}%",))
-    else:
-        cursor.execute("SELECT * FROM products")
+    # Get products
+    cursor.execute("SELECT * FROM products")
     products = cursor.fetchall()
 
-    # Cart count
-    cursor.execute("SELECT SUM(quantity) FROM orders WHERE user_id=?", (user_id,))
-    cart_count = cursor.fetchone()[0] or 0
-
-    # Order count
+    # Count user orders
     cursor.execute("SELECT COUNT(*) FROM order_history WHERE user_id=?", (user_id,))
-    order_count = cursor.fetchone()[0] or 0
+    order_count = cursor.fetchone()[0]
 
-    return render_template("user_dashboard.html",
-                           products=products,
-                           cart_count=cart_count,
-                           order_count=order_count,
-                           search=search)
+    # Calculate cart count
+    cursor.execute("SELECT SUM(quantity) as cart_count FROM orders WHERE user_id=?", (user_id,))
+    result = cursor.fetchone()
+    cart_count = result["cart_count"] or 0  # default 0 if empty
 
-# ---------------- ADD TO CART ----------------
+    return render_template(
+        "user_dashboard.html",
+        products=products,
+        order_count=order_count,
+        cart_count=cart_count
+    )
+
+# ADD TO CART
 @app.route("/add_to_cart/<int:product_id>", methods=["POST"])
 def add_to_cart(product_id):
-    if 'user' not in session:
-        return jsonify({"success": False, "error": "Login required"})
+    if "user" not in session:
+        return {"success": False, "error": "Login required"}, 401
+
+    user_id = session["user"]
+    qty = int(request.form.get("qty", 1))
 
     db = get_db()
     cursor = db.cursor()
-    user_id = session['user']
 
-    qty = int(request.form.get("qty", 1))
-
-    # Check if already exists
+    # Check if product already in cart
     cursor.execute("SELECT * FROM orders WHERE user_id=? AND product_id=?", (user_id, product_id))
     existing = cursor.fetchone()
-
     if existing:
-        cursor.execute(
-            "UPDATE orders SET quantity = quantity + ? WHERE id=?",
-            (qty, existing["id"])
-        )
+        # Update quantity
+        new_qty = existing["quantity"] + qty
+        cursor.execute("UPDATE orders SET quantity=? WHERE id=?", (new_qty, existing["id"]))
     else:
-        cursor.execute(
-            "INSERT INTO orders (user_id, product_id, quantity) VALUES (?, ?, ?)",
-            (user_id, product_id, qty)
-        )
+        cursor.execute("INSERT INTO orders(user_id,product_id,quantity) VALUES(?,?,?)",
+                       (user_id, product_id, qty))
 
     db.commit()
 
-    # ✅ Get updated cart count
-    cursor.execute("SELECT SUM(quantity) FROM orders WHERE user_id=?", (user_id,))
-    cart_count = cursor.fetchone()[0] or 0
+    # Calculate total cart items
+    cursor.execute("SELECT SUM(quantity) as cart_count FROM orders WHERE user_id=?", (user_id,))
+    cart_count = cursor.fetchone()["cart_count"] or 0
 
-    return jsonify({
-        "success": True,
-        "cart_count": cart_count
-    })
-# ---------------- CART ----------------
+    return {"success": True, "cart_count": cart_count}
+
+# CART
 @app.route("/cart")
 def cart():
-    if 'user' not in session:
+    if "user" not in session:
         return redirect("/user_login")
 
+    user_id = session["user"]
     db = get_db()
     cursor = db.cursor()
-    user_id = session['user']
 
     cursor.execute("""
-        SELECT orders.id as order_id, products.name, products.price,
-               products.image, orders.quantity
-        FROM orders
-        JOIN products ON orders.product_id = products.id
-        WHERE orders.user_id=?
+    SELECT orders.id as order_id, products.name, products.price,
+           products.image, orders.quantity
+    FROM orders
+    JOIN products ON orders.product_id = products.id
+    WHERE orders.user_id=?
     """, (user_id,))
 
     items = cursor.fetchall()
-    total = sum(item['price'] * item['quantity'] for item in items)
+    total = sum(item["price"] * item["quantity"] for item in items)
 
-    return render_template("cart.html", items=items, total=total)
+    # Total items count
+    cart_count = sum(item["quantity"] for item in items)
 
-# ---------------- UPDATE CART ----------------
-@app.route("/update_cart/<int:order_id>", methods=["POST"])
-def update_cart(order_id):
-    qty = int(request.form.get("qty", 1))
+    return render_template("cart.html", items=items, total=total, cart_count=cart_count)
 
-    db = get_db()
-    cursor = db.cursor()
-    cursor.execute("UPDATE orders SET quantity=? WHERE id=?", (qty, order_id))
-    db.commit()
-
-    return redirect("/cart")
-
-# ---------------- REMOVE ITEM ----------------
-@app.route("/remove_item/<int:order_id>")
-def remove_item(order_id):
-    db = get_db()
-    cursor = db.cursor()
-    cursor.execute("DELETE FROM orders WHERE id=?", (order_id,))
-    db.commit()
-    return redirect("/cart")
-
-# ---------------- CHECKOUT ----------------
-
-@app.route('/checkout')
+# CHECKOUT PAGE
+@app.route("/checkout")
 def checkout():
-    if 'user' not in session:
-        return redirect('/user_login')
+    if "user" not in session:
+        return redirect("/user_login")
 
+    user_id = session["user"]
     db = get_db()
     cursor = db.cursor()
-    user_id = session['user']
 
+    # Get items in the cart
     cursor.execute("""
-        SELECT orders.id as order_id, products.name, products.price,
-               orders.quantity
-        FROM orders
-        JOIN products ON orders.product_id = products.id
-        WHERE orders.user_id=?
+    SELECT orders.id as order_id, products.name, products.price,
+           products.image, orders.quantity
+    FROM orders
+    JOIN products ON orders.product_id = products.id
+    WHERE orders.user_id=?
     """, (user_id,))
 
     items = cursor.fetchall()
-
-    if not items:
-        return "<h3>Your cart is empty</h3>"
-
-    total = sum(item['price'] * item['quantity'] for item in items)
+    total = sum(item["price"] * item["quantity"] for item in items)
 
     return render_template("checkout.html", items=items, total=total)
 
-# ---------------- PLACE ORDER ----------------
-@app.route("/place_order", methods=["POST"])
-def place_order():
-    user_id = session['user']
+# PAYMENT
+@app.route("/payment", methods=["GET", "POST"])
+def payment():
+
+    if "user" not in session:
+        return redirect("/user_login")
+
+    user_id = session["user"]
     db = get_db()
     cursor = db.cursor()
 
-    cursor.execute("""
-        SELECT products.name, products.price, orders.quantity
-        FROM orders
-        JOIN products ON orders.product_id = products.id
-        WHERE orders.user_id=?
-    """, (user_id,))
-
-    items = cursor.fetchall()
-
-    for item in items:
-        cursor.execute("""
-            INSERT INTO order_history (user_id, product_name, price, quantity)
-            VALUES (?, ?, ?, ?)
-        """, (user_id, item['name'], item['price'], item['quantity']))
-
-    cursor.execute("DELETE FROM orders WHERE user_id=?", (user_id,))
-    db.commit()
-
-    return "<h2>✅ Order Placed Successfully</h2><a href='/user_dashboard'>Go Home</a>"
-#--------------payment Root-----------------
-@app.route('/payment')
-def payment_page():
-    if 'user' not in session:
-        return redirect('/user_login')
-
-    order_number = str(uuid.uuid4())[:8]
-    return render_template("payment.html", order_number=order_number)
-#-----------------payment Success Root--------------------
-@app.route('/payment_success/<order_number>')
-def payment_success(order_number):
-    if 'user' not in session:
-        return redirect('/user_login')
-
-    user_id = session['user']
-    db = get_db()
-    cursor = db.cursor()
-
-    # Get cart items
-    cursor.execute("""
-        SELECT orders.product_id, orders.quantity, products.price
-        FROM orders
-        JOIN products ON orders.product_id = products.id
-        WHERE orders.user_id=?
-    """, (user_id,))
-
+    cursor.execute("SELECT * FROM orders WHERE user_id=?", (user_id,))
     items = cursor.fetchall()
 
     if not items:
-        return "<h3>No items in cart</h3>"
+        flash("Your cart is empty.")
+        return redirect("/cart")
 
-    # Insert into order_history
+    order_number = str(uuid.uuid4())[:8]
+
+    if request.method == "POST":
+        return redirect(url_for("payment_success", order_number=order_number))
+
+    return render_template("payment.html", order_number=order_number, items=items)
+
+# PAYMENT SUCCESS
+@app.route("/payment_success/<order_number>")
+def payment_success(order_number):
+
+    if "user" not in session:
+        return redirect("/user_login")
+
+    user_id = session["user"]
+    db = get_db()
+    cursor = db.cursor()
+
+    cursor.execute("""
+    SELECT orders.product_id,orders.quantity,products.price
+    FROM orders
+    JOIN products ON orders.product_id=products.id
+    WHERE orders.user_id=?
+    """, (user_id,))
+
+    items = cursor.fetchall()
+
     for item in items:
         cursor.execute("""
-            INSERT INTO order_history
-            (order_number, user_id, product_id, quantity, price, status, payment_status)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO order_history
+        (order_number,user_id,product_id,quantity,price,status,payment_status)
+        VALUES(?,?,?,?,?,?,?)
         """, (
             order_number,
             user_id,
-            item['product_id'],
-            item['quantity'],
-            item['price'],
-            'Completed',
-            'Paid'
+            item["product_id"],
+            item["quantity"],
+            item["price"],
+            "Pending",
+            "Paid"
         ))
 
-    # Clear cart
     cursor.execute("DELETE FROM orders WHERE user_id=?", (user_id,))
     db.commit()
 
-    flash(f"✅ Payment Successful! Order ID: {order_number}")
+    return redirect("/my_orders")
 
-    return redirect('/my_orders')
-#-------------------My Orders------------------
-@app.route('/my_orders')
+# MY ORDERS
+@app.route("/my_orders")
 def my_orders():
-    if 'user' not in session:
-        return redirect('/user_login')
+
+    if "user" not in session:
+        return redirect("/user_login")
+
+    user_id = session["user"]
 
     db = get_db()
     cursor = db.cursor()
-    user_id = session['user']
 
     cursor.execute("""
-        SELECT oh.order_number, p.name, p.image,
-               oh.quantity, oh.price, oh.status,
-               oh.payment_status, oh.created_at
-        FROM order_history oh
-        JOIN products p ON oh.product_id = p.id
-        WHERE oh.user_id=?
-        ORDER BY oh.created_at DESC
+    SELECT 
+        oh.id,
+        oh.order_number,
+        p.name,
+        p.image,
+        oh.quantity,
+        oh.price,
+        oh.status,
+        oh.payment_status,
+        oh.created_at
+    FROM order_history oh
+    JOIN products p ON oh.product_id = p.id
+    WHERE oh.user_id = ?
+    ORDER BY oh.created_at DESC
     """, (user_id,))
 
     orders = cursor.fetchall()
 
     return render_template("my_orders.html", orders=orders)
+# TRACK ORDER
+@app.route("/track_order/<int:order_id>")
+def track_order(order_id):
 
-# ---------------- USER LOGOUT ----------------
+    db = get_db()
+    cursor = db.cursor()
+
+    cursor.execute("""
+    SELECT 
+        oh.order_number,
+        p.name,
+        p.image,
+        oh.quantity,
+        oh.price,
+        oh.status
+    FROM order_history oh
+    JOIN products p ON oh.product_id = p.id
+    WHERE oh.id = ?
+    """, (order_id,))
+
+    order = cursor.fetchone()
+
+    return render_template("track_order.html", order=order)
+
+# LOGOUT
 @app.route("/logout")
 def logout():
-    session.pop("user", None)  # only remove user
+    session.clear()
     return redirect("/")
 
-# ---------------- RUN ----------------
 if __name__ == "__main__":
     app.run(debug=True)

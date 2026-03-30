@@ -7,7 +7,7 @@
 <style>
     body { font-family: 'Segoe UI', sans-serif; background:#f5f7fb; margin:0; padding:0; }
     .container { max-width:900px; margin:20px auto; padding:20px; background:#fff; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.1); }
-    h2 { text-align:center; margin-bottom:10px; }
+    h2 { text-align:center; margin-bottom:20px; }
     
     /* Buttons */
     .btn-back, .btn-action {
@@ -48,8 +48,6 @@
 <div class="container">
     <h2>🛒 Checkout</h2>
 
-    <!-- Back to Home always visible -->
-   
     {% if items %}
         <!-- Table of cart items -->
         <table>
@@ -76,12 +74,18 @@
         <!-- Actions: Back to Cart + Payment -->
         <div class="actions">
             <a class="btn-back" href="{{ url_for('cart') }}">← Back to Cart</a>
-            <a class="btn-action" href="/payment">Proceed to Payment</a>
+
+            <form action="{{ url_for('payment') }}" method="POST" style="display:inline;">
+                <button type="submit" class="btn-action">Proceed to Payment</button>
+            </form>
         </div>
 
     {% else %}
         <!-- Empty cart message -->
         <p class="empty-msg">Your cart is empty.</p>
+        <div class="actions" style="justify-content:center;">
+            <a class="btn-back" href="{{ url_for('user_dashboard') }}">← Back to Shop</a>
+        </div>
     {% endif %}
 
 </div>

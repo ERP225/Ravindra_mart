@@ -1089,23 +1089,35 @@ def get_delivery_route(order_id):
 def verify_delivery(order_id):
     if "rider" not in session:
         return redirect("/rider_login")
+    
     conn = sqlite3.connect("database.db")
     cursor = conn.cursor()
+    
     if request.method == 'POST':
         otp_entered = request.form.get('otp')
         cursor.execute("SELECT delivery_otp FROM order_history WHERE id=?", (order_id,))
         otp_actual = cursor.fetchone()[0]
+        
         if otp_entered == otp_actual:
-            cursor.execute("UPDATE order_history SET rider_status='Delivered' WHERE id=?", (order_id,))
+            # Update rider_status and mark OTP verified
+            cursor.execute("""
+                UPDATE order_history
+                SET rider_status='Delivered',
+                    status='Delivered',
+                    is_otp_verified=1
+                WHERE id=?
+            """, (order_id,))
             conn.commit()
             conn.close()
             flash("Order delivered successfully!", "success")
             return redirect("/rider_dashboard")
         else:
             flash("Invalid OTP", "danger")
+    
     else:
         cursor.execute("SELECT delivery_otp FROM order_history WHERE id=?", (order_id,))
         otp = cursor.fetchone()[0]
+    
     conn.close()
     return render_template('verify_otp.html', order_id=order_id)
 	

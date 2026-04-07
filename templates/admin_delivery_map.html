@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<title>Delivery Route</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<style>
+
+#map{
+height:600px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h2>🚚 Delivery Route</h2>
+
+<div id="map"></div>
+
+<script>
+
+let map = L.map('map').setView([17.3850,78.4867],13)
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+maxZoom:19
+}).addTo(map)
+
+let riderMarker
+let customerMarker
+let routeLine
+
+function loadRoute(){
+
+fetch("/get_delivery_route/1")
+
+.then(res=>res.json())
+
+.then(data=>{
+
+let rider=[data.rider_lat,data.rider_lng]
+let customer=[data.cust_lat,data.cust_lng]
+
+if(riderMarker) map.removeLayer(riderMarker)
+if(customerMarker) map.removeLayer(customerMarker)
+if(routeLine) map.removeLayer(routeLine)
+
+riderMarker=L.marker(rider).addTo(map).bindPopup("🚴 Rider")
+customerMarker=L.marker(customer).addTo(map).bindPopup("🏠 Customer")
+
+routeLine=L.polyline([rider,customer],{color:"blue"}).addTo(map)
+
+let distance = map.distance(rider,customer)/1000
+
+let speed=30
+
+let eta=(distance/speed)*60
+
+alert("Distance: "+distance.toFixed(2)+" km\nETA: "+eta.toFixed(0)+" mins")
+
+})
+
+}
+
+loadRoute()
+
+setInterval(loadRoute,5000)
+
+</script>
+
+</body>
+</html>

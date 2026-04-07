@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manage Addresses - Ravi Mart</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
+<style>
+    body { font-family: 'Segoe UI', sans-serif; background:#f5f7fb; margin:0; padding:20px; }
+    #map { height: 300px; width: 100%; margin-bottom: 20px; border-radius:8px; border:1px solid #ccc; }
+    .address-card { border:1px solid #ccc; padding:10px; border-radius:6px; margin-bottom:10px; }
+    .btn-action { margin:2px; }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🗺️ Select or Add Address</h2>
+
+    <!-- Map -->
+    <div id="map"></div>
+    <button type="button" class="btn btn-primary mb-3" onclick="useMyLocation()">📍 Use My Location</button>
+
+    <!-- Address Form -->
+    <!-- Address Form -->
+<form id="addressForm" method="POST" action="/save_address" onsubmit="return validateForm()">
+    <div class="row mb-2">
+        <div class="col">
+            <input type="text" name="street" id="street" class="form-control" placeholder="Street" required>
+        </div>
+        <div class="col">
+            <input type="text" name="house_no" id="house_no" class="form-control" placeholder="House / Flat No." required>
+        </div>
+    </div>
+
+    <div class="mb-2">
+        <input type="text" name="landmark" id="landmark" class="form-control" placeholder="Landmark (optional)">
+    </div>
+
+    <input type="hidden" name="latitude" id="latitude">
+    <input type="hidden" name="longitude" id="longitude">
+    <input type="hidden" name="full_address" id="full_address">
+
+    <button type="submit" class="btn btn-success">Save & Continue</button>
+</form>
+
+    <hr>
+
+    <!-- Saved Addresses -->
+    <h4>Saved Addresses</h4>
+  {% for addr in saved_addresses %}
+<div class="address-card">
+    <b>{{ addr['street'] }}, {{ addr['house_no'] }}</b>{% if addr['landmark'] %} ({{ addr['landmark'] }}){% endif %}<br>
+    <small>{{ addr['full_address'] }}</small><br>
+    <a href="{{ url_for('checkout_page', address_id=addr['id']) }}" class="btn btn-primary btn-sm">Deliver Here</a>
+    <a href="/edit_address/{{ addr['id'] }}" class="btn btn-warning btn-sm">Edit</a>
+    <a href="/delete_address/{{ addr['id'] }}" class="btn btn-danger btn-sm">Delete</a>
+</div>
+{% else %}
+<p>No saved addresses yet.</p>
+{% endfor %}
+
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+let map, marker;
+
+function initMap() {
+    const defaultLocation = [20.5937, 78.9629]; // India center
+    map = L.map('map').setView(defaultLocation, 5);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    marker = L.marker(defaultLocation, {draggable:true}).addTo(map);
+    updateCoordinates(defaultLocation);
+
+    map.on('click', function(e) {
+        marker.setLatLng(e.latlng);
+        updateCoordinates([e.latlng.lat, e.latlng.lng]);
+    });
+
+    marker.on('dragend', function(e){
+        updateCoordinates([e.target.getLatLng().lat, e.target.getLatLng().lng]);
+    });
+}
+
+function updateCoordinates(latlng) {
+    document.getElementById('latitude').value = latlng[0];
+    document.getElementById('longitude').value = latlng[1];
+
+    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng[0]}&lon=${latlng[1]}`)
+    .then(res => res.json())
+    .then(data => { document.getElementById('full_address').value = data.display_name || ""; })
+    .catch(() => { document.getElementById('full_address').value = ""; });
+}
+
+// Validate before submitting
+function validateForm() {
+    const lat = document.getElementById('latitude').value;
+    const lng = document.getElementById('longitude').value;
+    if(!lat || !lng) { alert("Please select a location on the map."); return false; }
+    return true;
+}
+
+// Use browser geolocation
+function useMyLocation() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            pos => {
+                const coords = [pos.coords.latitude, pos.coords.longitude];
+                map.setView(coords, 15);
+                marker.setLatLng(coords);
+                updateCoordinates(coords);
+            }, 
+            err => {
+                switch(err.code) {
+                    case err.PERMISSION_DENIED:
+                        alert("User denied the request for Geolocation.");
+                        break;
+                    case err.POSITION_UNAVAILABLE:
+                        alert("Location information is unavailable.");
+                        break;
+                    case err.TIMEOUT:
+                        alert("The request to get user location timed out.");
+                        break;
+                    default:
+                        alert("An unknown error occurred.");
+                        break;
+                }
+            }
+        );
+    } else {
+        alert("Geolocation is not supported by your browser.");
+    }
+}
+
+window.onload = initMap;
+</script>
+</body>
+</html>

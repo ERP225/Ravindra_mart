@@ -46,47 +46,33 @@
 <body>
 
 <div class="container">
-    <h2>🛒 Checkout</h2>
+   <h2>Checkout</h2>
 
-    {% if items %}
-        <!-- Table of cart items -->
-        <table>
-            <tr>
-                <th>Product</th>
-                <th>Price</th>
-                <th>Quantity</th>
-                <th>Total</th>
-            </tr>
-            {% for item in items %}
-            <tr>
-                <td>{{ item.name }}</td>
-                <td>₹{{ item.price }}</td>
-                <td>{{ item.quantity }}</td>
-                <td>₹{{ item.price * item.quantity }}</td>
-            </tr>
-            {% endfor %}
-            <tr>
-                <td colspan="3"><b>Grand Total</b></td>
-                <td><b>₹{{ total }}</b></td>
-            </tr>
-        </table>
+<h4>Cart Items</h4>
+{% if items %}
+<table>
+<tr><th>Product</th><th>Price</th><th>Qty</th><th>Total</th></tr>
+{% for item in items %}
+<tr>
+<td>{{ item['name'] }}</td>
+<td>₹{{ item['price'] }}</td>
+<td>{{ item['quantity'] }}</td>
+<td>₹{{ item['price']*item['quantity'] }}</td>
+</tr>
+{% endfor %}
+<tr><td colspan="3">Grand Total</td><td>₹{{ total }}</td></tr>
+</table>
+{% else %}
+<p>No items in cart.</p>
+{% endif %}
 
-        <!-- Actions: Back to Cart + Payment -->
-        <div class="actions">
-            <a class="btn-back" href="{{ url_for('cart') }}">← Back to Cart</a>
-
-            <form action="{{ url_for('payment') }}" method="POST" style="display:inline;">
-                <button type="submit" class="btn-action">Proceed to Payment</button>
-            </form>
-        </div>
-
-    {% else %}
-        <!-- Empty cart message -->
-        <p class="empty-msg">Your cart is empty.</p>
-        <div class="actions" style="justify-content:center;">
-            <a class="btn-back" href="{{ url_for('user_dashboard') }}">← Back to Shop</a>
-        </div>
-    {% endif %}
+<h4>Select Address</h4>
+{% for addr in saved_addresses %}
+<div>
+<b>{{ addr['street'] }}, {{ addr['house_no'] }}</b>
+<a href="{{ url_for('checkout_page', address_id=addr['id']) }}">Deliver Here</a>
+</div>
+{% endfor %}
 
 </div>
 

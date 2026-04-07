@@ -4,140 +4,111 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>User Register - Ravi Mart</title>
-<style>
-    body {
-        font-family: Arial, sans-serif;
-        background-color: #f0f2f5;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-        margin: 0;
-    }
-
-    .register-box {
-        background: #fff;
-        padding: 40px 30px;
-        border-radius: 12px;
-        box-shadow: 0 6px 20px rgba(0,0,0,0.1);
-        width: 100%;
-        max-width: 400px;
-        box-sizing: border-box; /* ensures padding is inside container */
-    }
-
-    .register-box h2 {
-        text-align: center;
-        margin-bottom: 30px;
-        color: #333;
-    }
-
-    .input-group {
-        position: relative;
-        margin-bottom: 20px;
-    }
-
-    .input-group input {
-        width: 100%;
-        padding: 12px 12px 12px 40px; /* left padding for icon */
-        border: 1px solid #ccc;
-        border-radius: 6px;
-        font-size: 15px;
-        box-sizing: border-box; /* ensures padding stays inside input */
-        display: block; /* fixes overflow */
-    }
-
-    .input-group input:focus {
-        border-color: #007bff;
-        outline: none;
-    }
-
-    .input-group i {
-        position: absolute;
-        top: 50%;
-        left: 12px;
-        transform: translateY(-50%);
-        color: #888;
-        font-size: 16px;
-        pointer-events: none; /* icon doesn't block typing */
-    }
-
-    .register-box button {
-        width: 100%;
-        padding: 12px;
-        border: none;
-        border-radius: 6px;
-        background-color: #007bff;
-        color: #fff;
-        font-size: 16px;
-        cursor: pointer;
-        transition: background 0.3s;
-    }
-
-    .register-box button:hover {
-        background-color: #0056b3;
-    }
-
-    .flash-message {
-        padding: 10px 12px;
-        margin-bottom: 15px;
-        border-radius: 6px;
-        font-size: 14px;
-    }
-
-    .flash-success {
-        background-color: #d4edda;
-        color: #155724;
-    }
-
-    .flash-error {
-        background-color: #f8d7da;
-        color: #721c24;
-    }
-
-    .login-link {
-        text-align: center;
-        margin-top: 15px;
-        font-size: 14px;
-    }
-
-    .login-link a {
-        color: #007bff;
-        text-decoration: none;
-    }
-
-    .login-link a:hover {
-        text-decoration: underline;
-    }
-</style>
-<!-- Font Awesome for icons -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f0f2f5;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+.register-box {
+    background: #fff;
+    padding: 40px 30px;
+    border-radius: 12px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+    width: 100%;
+    max-width: 500px;
+}
+.register-box h2 {
+    text-align: center;
+    margin-bottom: 30px;
+    color: #333;
+}
+.input-group {
+    position: relative;
+    margin-bottom: 20px;
+}
+.input-group input {
+    width: 100%;
+    padding: 12px 12px 12px 40px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 15px;
+    box-sizing: border-box;
+}
+.input-group i {
+    position: absolute;
+    top: 50%;
+    left: 12px;
+    transform: translateY(-50%);
+    color: #888;
+    font-size: 16px;
+    pointer-events: none;
+}
+.register-box button {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 6px;
+    background-color: #007bff;
+    color: #fff;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+.register-box button:hover {
+    background-color: #0056b3;
+}
+.map-container {
+    width: 100%;
+    height: 300px;
+    margin-bottom: 20px;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid #ccc;
+}
+.flash-message {
+    padding: 10px 12px;
+    margin-bottom: 15px;
+    border-radius: 6px;
+    font-size: 14px;
+}
+.flash-success { background-color: #d4edda; color: #155724; }
+.flash-error { background-color: #f8d7da; color: #721c24; }
+.login-link { text-align: center; margin-top: 15px; font-size: 14px; }
+.login-link a { color: #007bff; text-decoration: none; }
+.login-link a:hover { text-decoration: underline; }
+</style>
 </head>
 <body>
 
 <div class="register-box">
     <h2>Create Account</h2>
-    <form method="POST">
+    <form method="POST" onsubmit="return validateLocation()">
         <div class="input-group">
             <i class="fa fa-user"></i>
-            <input type="text" name="username" placeholder="Username" required>
+            <input type="text" name="username" placeholder="Username" autocomplete="new-password" required>
         </div>
         <div class="input-group">
             <i class="fa fa-envelope"></i>
-            <input type="email" name="email" placeholder="Email" required>
+            <input type="email" name="email" placeholder="Email" autocomplete="new-password" required>
         </div>
         <div class="input-group">
             <i class="fa fa-lock"></i>
-            <input type="password" name="password" placeholder="Password" required>
+            <input type="password" name="password" placeholder="Password" autocomplete="new-password" required>
         </div>
+
+       
+
         <button type="submit">Register</button>
     </form>
 
-    <!-- Flash Messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% for category, msg in messages %}
-        <div class="flash-message flash-{{ category }}">{{ msg }}</div>
-      {% endfor %}
-    {% endwith %}
 
     <div class="login-link">
         Already have an account? <a href="{{ url_for('user_login') }}">Login</a>

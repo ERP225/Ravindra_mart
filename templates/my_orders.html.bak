@@ -189,17 +189,7 @@ async function loadOrders(){
 <td><span class="status ${order.payment_status.toLowerCase()}">${order.payment_status}</span></td>
 <td>${order.payment_status=='Refunded'?'₹'+(order.price*order.quantity):'-'}</td>
 <td>${order.created_at}</td>
-<td>
-  <span class="status ${order.is_otp_verified ? 'delivered' : order.status.toLowerCase()}">
-    ${order.is_otp_verified ? 'Delivered' : order.status}
-  </span>
-</td>
-
-<td>
-  ${!order.is_otp_verified
-    ? `<a href="/track_order/${order.id}"><button class="track-btn">Track Order</button></a>`
-    : '-'}
-</td>
+<td>${!order.is_otp_verified?`<a href="/track_order/${order.id}"><button class="track-btn">Track Order</button></a>`:'-'}</td>
 </tr>
             `;
 

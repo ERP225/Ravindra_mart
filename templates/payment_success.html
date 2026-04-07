@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Order Confirmed - Ravi Mart</title>
+<style>
+    body { font-family: 'Segoe UI', sans-serif; background:#f5f7fb; text-align:center; padding:50px;}
+    .card { display:inline-block; padding:30px; background:#fff; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.1);}
+    h2 { color:#27ae60; }
+    p { font-size:18px; margin:10px 0; }
+</style>
+</head>
+<body>
+    <div class="card">
+       <h2>✅ Payment Successful!</h2>
+ 
+    <p><strong>Order Number:</strong> {{ order_number }}</p>
+    <p><strong>Delivery OTP:</strong> {{ delivery_otp }}</p>
+    <p>The delivery OTP has also been sent to your registered email.</p>
+
+    <h3>Order Details:</h3>
+    <ul>
+    {% for item in order %}
+        <li>{{ item.name }} × {{ item.quantity }} = ₹{{ item.price * item.quantity }}</li>
+    {% endfor %}
+    </ul>
+
+    <p><strong>Total:</strong> ₹{{ order | sum(attribute='price') }}</p>
+
+    <a href="{{ url_for('user_dashboard') }}">Back to Dashboard</a>
+
+
+    </div>
+</body>
+</html>

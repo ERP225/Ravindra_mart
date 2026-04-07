@@ -16,6 +16,7 @@ th,td{padding:10px;border:1px solid #ddd;text-align:center;}
 th{background:#2c3e50;color:white;}
 tr:nth-child(even){background:#f9f9f9;}
 img{width:50px;height:50px;object-fit:cover;border-radius:5px;}
+
 .status{padding:5px 10px;border-radius:5px;color:white;font-weight:bold;}
 .Pending{background:#f39c12;}
 .Completed{background:#27ae60;}
@@ -24,13 +25,25 @@ img{width:50px;height:50px;object-fit:cover;border-radius:5px;}
 .Shipped{background:#2980b9;}
 .Out_for_Delivery{background:#f1c40f;}
 .Delivered{background:#27ae60;}
-.Paid{background:#27ae60;}
-.Unpaid{background:#f39c12;}
-.Refunded{background:#3498db;}
+.paid{background:#27ae60;}
+
+
+.Pending { background:#f39c12; }
+.Assigned { background:#3498db; }
+.Accepted { background:#2ecc71; }
+.Picked { background:#9b59b6; }
+.Delivered { background:#27ae60; }
+.Cancelled { background:#e74c3c; }
+.Completed { background:#27ae60; }
+
+
 button{padding:5px 10px;border:none;border-radius:5px;cursor:pointer;}
 .complete{background:#27ae60;color:white;}
 .cancel{background:#e74c3c;color:white;}
+.assign{background:#2980b9;color:white;}
+
 select{padding:6px;border-radius:5px;border:1px solid #ccc;cursor:pointer;}
+
 .filters{margin-bottom:10px;}
 .filters a{padding:6px 12px;background:#2c3e50;color:white;text-decoration:none;border-radius:5px;margin-right:5px;}
 .filters a.active{background:#27ae60;}
@@ -45,14 +58,10 @@ function searchOrders(){
         row.style.display = text.includes(input) ? "" : "none"
     })
 }
-function updateTracking(order_id,status){
-    if(status=="") return;
-    status = status.replace(/ /g,"_")
-    window.location.href="/update_tracking/"+order_id+"/"+status
-}
 </script>
 
 </head>
+
 <body>
 
 <div class="top-bar">
@@ -81,52 +90,99 @@ function updateTracking(order_id,status){
 <table>
 <thead>
 <tr>
-<th>Order No</th><th>User</th><th>Product</th><th>Image</th><th>Qty</th><th>Total</th><th>Status</th>
-<th>Payment</th><th>Tracking</th><th>Date</th><th>Actions</th>
+<th>Order No</th><th>User</th><th>Product</th><th>Image</th><th>Qty</th><th>Total</th><th>Status</th><th>Payment</th><th>Date</th><th>Assign Rider</th><th>Action</th>
+
 </tr>
 </thead>
+
 <tbody>
+
+
+
+
 {% for order in orders %}
+
 <tr>
+
 <td>{{ order.order_number }}</td>
 <td>{{ order.username }}</td>
 <td>{{ order.name }}</td>
-<td><img src="{{ url_for('static', filename=order.image) }}" alt="Product"></td>
+
+<td>
+<img src="{{ url_for('static', filename=order.image) }}">
+</td>
+
 <td>{{ order.quantity }}</td>
 <td>₹{{ order.price * order.quantity }}</td>
-<td><span class="status {{ order.status }}">{{ order.status }}</span></td>
-<td><span class="status {{ order.payment_status }}">{{ order.payment_status }}</span></td>
+
 <td>
-{% if order.status in ['Cancelled'] %}
-<select disabled><option>{{ order.status }}</option></select>
-{% else %}
-<select onchange="updateTracking({{ order.id }}, this.value)">
-<option value="">Update</option>
-<option value="Packed">Packed</option>
-<option value="Shipped">Shipped</option>
-<option value="Out_for_Delivery">Out for Delivery</option>
-<option value="Delivered">Delivered</option>
-</select>
-{% endif %}
+<span class="status {{ order.status }}">{{ order.status }}</span>
 </td>
-<td>{{ order.created_at }}</td>
+
 <td>
+<span class="status {{ order.payment_status or 'Pending' }}">{{ order.payment_status or 'Pending' }}</span>
+</td>
+
+<td>{{ order.created_at }}</td>
+
+<!-- Assign Rider -->
+<td>
+
+{% if order.rider_id %}
+Assigned
+{% else %}
+
+<form method="POST" action="/assign_rider">
+
+<input type="hidden" name="order_id" value="{{ order.id }}">
+
+<select name="rider_id" required>
+
+<option value="">Select Rider</option>
+
+{% for rider in riders %}
+<option value="{{ rider.id }}">{{ rider.name }}</option>
+{% endfor %}
+
+</select>
+
+<button type="submit" class="assign">Assign</button>
+
+</form>
+
+{% endif %}
+
+</td>
+
+<!-- Complete / Cancel Buttons -->
+
+<td>
+
 {% if order.status in ['Completed','Cancelled'] %}
+
 <button class="complete" disabled>Complete</button>
 <button class="cancel" disabled>Cancel</button>
+
 {% else %}
+
 <button class="complete"
 onclick="window.location.href='{{ url_for('update_order_status', order_id=order.id, status='Completed') }}'">
 Complete
 </button>
+
 <button class="cancel"
 onclick="window.location.href='{{ url_for('update_order_status', order_id=order.id, status='Cancelled') }}'">
 Cancel
 </button>
+
 {% endif %}
+
 </td>
+
 </tr>
+
 {% endfor %}
+
 </tbody>
 </table>
 

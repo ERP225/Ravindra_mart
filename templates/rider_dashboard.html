@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Rider Dashboard</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
+<style>
+#map{
+    height:400px;
+    width:100%;
+    margin-bottom:20px;
+}
+</style>
+
+</head>
+<body>
+
+<div class="container mt-5">
+<h2>Rider Dashboard</h2>
+
+<div id="map"></div>
+
+<table class="table table-bordered">
+<thead>
+<tr>
+<th>Order Number</th>
+<th>Product</th>
+<th>Quantity</th>
+<th>Status</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+{% for order in orders %}
+<tr>
+<td>{{ order.order_number }}</td>
+<td>{{ order.product_name }}</td>
+<td>{{ order.quantity }}</td>
+<td>{{ order.rider_status }}</td>
+<td>
+{% if order.rider_status == 'Delivered' %}
+<span class="badge bg-success">Delivered</span>
+{% elif order.rider_status == 'Picked' %}
+<span class="badge bg-warning text-dark">On the way</span>
+<a href="/verify_delivery/{{ order.id }}" class="btn btn-success btn-sm">Verify OTP</a>
+{% elif order.rider_status == 'Accepted' %}
+<a href="/pickup_order/{{ order.id }}" class="btn btn-primary btn-sm">Pickup</a>
+{% if order.pickup_address %}<small>Pickup: {{ order.pickup_address }}</small>{% endif %}
+{% elif order.rider_status in ['Pending','Assigned'] %}
+<a href="/accept_order/{{ order.id }}" class="btn btn-info btn-sm">Accept Order</a>
+{% endif %}
+</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+const map = L.map('map').setView([17.440894,78.444348],13);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'© OpenStreetMap contributors'
+}).addTo(map);
+
+const orders = {{ orders|tojson }};
+let markers = {};
+let routes = {};
+let riderMarkers = {};
+let bounds = []; // global bounds
+
+function parseCoord(val){
+    const num = parseFloat(val);
+    return isNaN(num)?null:num;
+}
+
+// Smoothly update route without flickering
+async function drawRouteSmooth(start, end, id, color="blue"){
+    if(!start || !end) return;
+    const apiKey = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImM1MjljOGZjNzkwYzQzZTc4ODU4NGM4MDczZjAyNjBmIiwiaCI6Im11cm11cjY0In0="; // replace with your ORS key
+    const url = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${apiKey}&start=${start[1]},${start[0]}&end=${end[1]},${end[0]}`;
+    try {
+        const res = await fetch(url);
+        const data = await res.json();
+        const coords = data.features[0].geometry.coordinates;
+        const routePoints = coords.map(c => [c[1], c[0]]);
+
+        if(routes[id]){
+            const latlngs = routes[id].getLatLngs();
+            if(JSON.stringify(latlngs) !== JSON.stringify(routePoints)){
+                routes[id].setLatLngs(routePoints);
+            }
+        } else {
+            routes[id] = L.polyline(routePoints, {color: color, weight: 5}).addTo(map);
+        }
+    } catch(err){ console.log("Route error", err); }
+}
+
+// Initialize Store & Customer markers + static Store->Customer route
+function initOrderMarkers(){
+    orders.forEach(o=>{
+        if(o.is_otp_verified) return; // skip delivered/verified orders
+
+        const pickupLat = parseCoord(o.pickup_lat);
+        const pickupLng = parseCoord(o.pickup_lng);
+        const custLat = parseCoord(o.customer_lat);
+        const custLng = parseCoord(o.customer_lng);
+
+        // Store marker
+        if(pickupLat && pickupLng && !markers["pickup_"+o.id]){
+            markers["pickup_"+o.id] = L.marker([pickupLat,pickupLng],{
+                icon:L.icon({iconUrl:"https://cdn-icons-png.flaticon.com/512/684/684908.png",iconSize:[30,30]})
+            }).addTo(map).bindPopup("<b>Store</b><br>"+(o.pickup_address||"Store"));
+        }
+
+        // Customer marker
+        if(custLat && custLng && !markers["cust_"+o.id]){
+            markers["cust_"+o.id] = L.marker([custLat,custLng],{
+                icon:L.icon({iconUrl:"https://cdn-icons-png.flaticon.com/512/149/149071.png",iconSize:[30,30]})
+            }).addTo(map).bindPopup("<b>"+(o.customer_name||"Customer")+"</b><br>"+(o.customer_address||""));
+        }
+
+        // Store->Customer route (blue)
+        if(pickupLat && pickupLng && custLat && custLng){
+            drawRouteSmooth([pickupLat,pickupLng],[custLat,custLng],"store_customer_"+o.id,"blue");
+        }
+
+        if(pickupLat && pickupLng) bounds.push([pickupLat,pickupLng]);
+        if(custLat && custLng) bounds.push([custLat,custLng]);
+    });
+
+    if(bounds.length>0) map.fitBounds(bounds,{padding:[50,50]});
+}
+
+// Update rider markers + live routes
+async function updateRiders(){
+    try{
+        const res = await fetch("/get_rider_locations");
+        const data = await res.json();
+        data.forEach(r=>{
+            const lat = parseCoord(r.lat);
+            const lng = parseCoord(r.lng);
+            if(!lat || !lng) return;
+
+            // Rider marker
+            if(riderMarkers[r.id]){
+                riderMarkers[r.id].setLatLng([lat,lng]);
+            } else {
+                riderMarkers[r.id] = L.marker([lat,lng],{
+                    icon:L.icon({iconUrl:"https://cdn-icons-png.flaticon.com/512/149/149059.png",iconSize:[30,30]})
+                }).addTo(map).bindPopup("<b>"+(r.name||"Rider")+"</b>");
+            }
+
+            // Remove routes of OTP verified orders
+            orders.forEach(o=>{
+                if(o.is_otp_verified){
+                    ["rider_store_","rider_customer_","store_customer_"].forEach(prefix=>{
+                        const key = prefix+o.id;
+                        if(routes[key]){
+                            map.removeLayer(routes[key]);
+                            delete routes[key];
+                        }
+                    });
+                }
+            });
+
+            // Draw routes for active rider orders
+            orders.filter(o => 
+                (o.rider_status === "Accepted" || o.rider_status === "Picked") &&
+                o.rider_id === r.id &&
+                !o.is_otp_verified
+            ).forEach(o=>{
+                const pickupLat=parseCoord(o.pickup_lat);
+                const pickupLng=parseCoord(o.pickup_lng);
+                const custLat=parseCoord(o.customer_lat);
+                const custLng=parseCoord(o.customer_lng);
+
+                // Rider → Store (green)
+                if(o.rider_status==="Accepted" && pickupLat && pickupLng){
+                    drawRouteSmooth([lat,lng],[pickupLat,pickupLng],"rider_store_"+o.id,"green");
+                }
+
+                // Rider → Customer (orange)
+                if(o.rider_status==="Picked" && custLat && custLng){
+                    drawRouteSmooth([lat,lng],[custLat,custLng],"rider_customer_"+o.id,"orange");
+                }
+
+                // Store → Customer (blue)
+                if(pickupLat && pickupLng && custLat && custLng){
+                    drawRouteSmooth([pickupLat,pickupLng],[custLat,custLng],"store_customer_"+o.id,"blue");
+                }
+            });
+        });
+    } catch(err){ console.log("Rider update error",err); }
+}
+
+// Send rider location to backend
+function sendLocation(){
+    if(navigator.geolocation){
+        navigator.geolocation.getCurrentPosition(async function(pos){
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+
+            const riderId = parseInt("{{ session['rider'] }}");
+
+            if(riderMarkers[riderId]){
+                riderMarkers[riderId].setLatLng([lat,lng]);
+            } else {
+                riderMarkers[riderId] = L.marker([lat,lng],{
+                    icon:L.icon({iconUrl:"https://cdn-icons-png.flaticon.com/512/149/149059.png",iconSize:[30,30]})
+                }).addTo(map).bindPopup("<b>You are here</b>");
+            }
+
+            if(bounds.length === 0) map.setView([lat,lng], 13);
+
+            // Draw live routes for active rider orders
+            orders.filter(o => 
+                (o.rider_status === "Accepted" || o.rider_status === "Picked") &&
+                o.rider_id === riderId &&
+                !o.is_otp_verified
+            ).forEach(o => {
+                const pickupLat = parseCoord(o.pickup_lat);
+                const pickupLng = parseCoord(o.pickup_lng);
+                const custLat = parseCoord(o.customer_lat);
+                const custLng = parseCoord(o.customer_lng);
+
+                // Remove green line if picked
+                if(o.rider_status === "Picked" && routes["rider_store_" + o.id]){
+                    map.removeLayer(routes["rider_store_" + o.id]);
+                    delete routes["rider_store_" + o.id];
+                }
+
+                // Rider → Store (green)
+                if(o.rider_status === "Accepted" && pickupLat && pickupLng){
+                    drawRouteSmooth([lat,lng],[pickupLat,pickupLng],"rider_store_"+o.id,"green");
+                }
+
+                // Rider → Customer (orange)
+                if(o.rider_status === "Picked" && custLat && custLng){
+                    drawRouteSmooth([lat,lng],[custLat,custLng],"rider_customer_"+o.id,"orange");
+                }
+
+                // Store → Customer (blue)
+                if(pickupLat && pickupLng && custLat && custLng){
+                    drawRouteSmooth([pickupLat,pickupLng],[custLat,custLng],"store_customer_"+o.id,"blue");
+                }
+            });
+
+            // Send to backend
+            await fetch("/update_rider_location",{
+                method:"POST",
+                headers:{"Content-Type":"application/json"},
+                body:JSON.stringify({lat,lng})
+            });
+
+        }, function(err){
+            console.log("Geolocation error", err);
+        });
+    }
+}
+
+// Initialize everything
+initOrderMarkers();
+sendLocation();
+updateRiders();
+setInterval(sendLocation,5000);
+setInterval(updateRiders,5000);
+</script>
+
+</body>
+</html>

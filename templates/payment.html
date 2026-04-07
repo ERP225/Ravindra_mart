@@ -34,15 +34,23 @@
 
 <div class="container">
    
+<h3>💳 Payment Page</h3>
 
-    <!-- Pay Now button -->
-  <h2>💳 Payment Page</h2>
+<p><strong>Order Number:</strong> {{ order_number }}</p>
+<p><strong>Delivery OTP:</strong> {{ delivery_otp }}</p> <!-- Add this line -->
 
-<p>Order Number: {{ order_number }}</p>
+<h4>Cart Items</h4>
+<ul>
+{% for item in items %}
+    <li>{{ item.name }} × {{ item.quantity }} = ₹{{ item.price * item.quantity }}</li>
+{% endfor %}
+</ul>
 
-<a href="/payment_success/{{ order_number }}">
-    <button>Pay Now</button>
-</a>
+<p><strong>Total:</strong> ₹{{ total }}</p>
+
+<form method="POST">
+    <button type="submit">Pay Now</button>
+</form>
 
 </div>
 

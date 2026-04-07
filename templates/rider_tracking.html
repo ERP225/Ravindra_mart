@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<title>Rider Tracking</title>
+
+<script>
+
+function sendLocation(){
+
+navigator.geolocation.getCurrentPosition(function(position){
+
+let lat = position.coords.latitude
+let lng = position.coords.longitude
+
+fetch("/update_rider_location",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({
+latitude:lat,
+longitude:lng
+})
+})
+
+})
+
+}
+
+setInterval(sendLocation,5000)
+
+</script>
+
+</head>
+
+<body>
+
+<h2>📍 Rider Location Sharing Active</h2>
+<p>Your location is being shared with admin...</p>
+
+</body>
+</html>

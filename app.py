@@ -1157,10 +1157,7 @@ def get_order_rider(order_id):
 
     return jsonify({})
 	
-#_____________ADMIN DELIVERY MAP_________________________
-@app.route("/admin_delivery_map")
-def admin_delivery_map():
-    return render_template("admin_delivery_map.html")
+
 # ---------------- LOGOUT ----------------
 @app.route("/logout")
 def logout():

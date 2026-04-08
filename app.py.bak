@@ -1168,5 +1168,14 @@ def logout():
     flash("User logged out successfully", "success")
     return redirect("/")
 
-if __name__ == "__main__":
-    socketio.run(app, debug=True, allow_unsafe_werkzeug=True)
+@app.route('/')
+def index():
+    return "Flask-SocketIO is working!"
+
+@socketio.on('message')
+def handle_message(msg):
+    print('Message received:', msg)
+    emit('response', f'Server received: {msg}')
+
+if __name__ == '__main__':
+    socketio.run(app, debug=True)

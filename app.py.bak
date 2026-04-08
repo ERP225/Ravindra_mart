@@ -79,6 +79,14 @@ def create_tables():
         payment_status TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )""")
+	
+	cursor.execute("""
+    CREATE TABLE IF NOT EXISTS rider_location(
+        rider_id INTEGER,
+        lat REAL,
+        lng REAL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )""")
 
     # Default admin
     cursor.execute("SELECT * FROM admin WHERE username=?", ("admin",))

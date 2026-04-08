@@ -1173,9 +1173,7 @@ def logout():
     flash("User logged out successfully", "success")
     return redirect("/")
 
-@app.route('/')
-def index():
-    return "Flask-SocketIO is working!"
+
 
 @socketio.on('message')
 def handle_message(msg):

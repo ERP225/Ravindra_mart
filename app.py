@@ -17,13 +17,14 @@ socketio = SocketIO(app)
 DB_NAME = "database.db"
 UPLOAD_FOLDER = "static/images"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+eventlet.monkey_patch()
 
 # FLASK MAIL CONFIG
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = 'erp@zoihospitals.com'
-app.config['MAIL_PASSWORD'] = 'twqowggcievrehbl'  # no spaces
+app.config['MAIL_USERNAME'] = os.getenv("MAIL_USERNAME")
+app.config['MAIL_PASSWORD'] = os.getenv("MAIL_PASSWORD")
 app.config['MAIL_DEFAULT_SENDER'] = 'erp@zoihospitals.com'
 
 mail = Mail(app)
@@ -1165,9 +1166,7 @@ def logout():
     flash("User logged out successfully", "success")
     return redirect("/")
 
-@app.route('/')
-def index():
-    return "Flask-SocketIO is working!"
+
 
 @socketio.on('message')
 def handle_message(msg):
@@ -1175,4 +1174,4 @@ def handle_message(msg):
     emit('response', f'Server received: {msg}')
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    socketio.run(app, host="0.0.0.0", port=5000)

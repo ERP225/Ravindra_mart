@@ -1,3 +1,6 @@
+import eventlet
+eventlet.monkey_patch()  # <- MUST be first
+
 from flask import Flask, render_template, request, redirect, session, flash, url_for, jsonify
 import sqlite3
 import os
@@ -39,18 +42,26 @@ def create_tables():
     db = get_db()
     cursor = db.cursor()
 
+    # USERS
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS users(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE,
+        email TEXT UNIQUE,latitude real,longitude ral,address text,
         password TEXT
-    )""")
+    )
+    """)
+
+    # ADMIN
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS admin(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE,
         password TEXT
-    )""")
+    )
+    """)
+
+    # PRODUCTS
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS products(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -59,14 +70,20 @@ def create_tables():
         description TEXT,
         image TEXT,
         quantity INTEGER
-    )""")
+    )
+    """)
+
+    # CART ORDERS
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS orders(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER,
-        product_id INTEGER,
+        product_id INTEGER,customer_lat REAL,customer_lng REAL,
         quantity INTEGER
-    )""")
+    )
+    """)
+
+    # ORDER HISTORY
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS order_history(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -75,28 +92,69 @@ def create_tables():
         product_id INTEGER,
         quantity INTEGER,
         price REAL,
+        address_id INTEGER,
+        customer_lat REAL,
+        customer_lng REAL,
+        customer_address TEXT,
+        pickup_lat REAL,
+        pickup_lng REAL,
+        pickup_address TEXT,
+        rider_id INTEGER,
+        rider_status TEXT,
         status TEXT,
+        delivery_otp TEXT,
         payment_status TEXT,
+        is_otp_verified INTEGER DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )""")
-	
-	cursor.execute("""
+    )
+    """)
+
+    # RIDERS
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS riders(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        phone TEXT UNIQUE,
+        vehicle TEXT,
+        password TEXT,
+        status TEXT DEFAULT 'Pending'
+    )
+    """)
+
+    # RIDER LOCATION
+    cursor.execute("""
     CREATE TABLE IF NOT EXISTS rider_location(
         rider_id INTEGER,
-        lat REAL,
-        lng REAL,
+        latitude REAL,
+        longitude REAL,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )""")
+    )
+    """)
 
-    # Default admin
+    # USER ADDRESSES
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS addresses(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        street TEXT,
+        house_no TEXT,
+        landmark TEXT,
+        latitude REAL,
+        longitude REAL,
+        full_address TEXT
+    )
+    """)
+
+    # DEFAULT ADMIN
     cursor.execute("SELECT * FROM admin WHERE username=?", ("admin",))
     if not cursor.fetchone():
-        cursor.execute("INSERT INTO admin(username,password) VALUES(?,?)",
-                       ("admin", generate_password_hash("admin123")))
+        cursor.execute(
+            "INSERT INTO admin(username,password) VALUES(?,?)",
+            ("admin", generate_password_hash("admin123"))
+        )
 
     db.commit()
     db.close()
-
 create_tables()
 
 # ----------------- ROUTES -----------------
@@ -988,10 +1046,9 @@ def pickup_order(order_id):
 def update_rider_location():
 
     if "rider" not in session:
-        return {"status":"error"}
+        return {"status": "error"}
 
     rider_id = session["rider"]
-
     lat = request.json.get("lat")
     lng = request.json.get("lng")
 
@@ -1004,45 +1061,34 @@ def update_rider_location():
 
     if existing:
         cursor.execute("""
-        UPDATE rider_location
-        SET lat=?, lng=?, updated_at=CURRENT_TIMESTAMP
-        WHERE rider_id=?
-        """,(lat,lng,rider_id))
-
+            UPDATE rider_location
+            SET latitude=?, longitude=?, updated_at=CURRENT_TIMESTAMP
+            WHERE rider_id=?
+        """, (lat, lng, rider_id))
     else:
         cursor.execute("""
-        INSERT INTO rider_location (rider_id, lat, lng)
-        VALUES (?,?,?)
-        """,(rider_id,lat,lng))
+            INSERT INTO rider_location (rider_id, latitude, longitude)
+            VALUES (?, ?, ?)
+        """, (rider_id, lat, lng))
 
     conn.commit()
     conn.close()
 
-    return {"status":"success"}
+    return {"status": "success"}
 #----------- GET RIDER LOCATION-----------------------------
 @app.route("/get_rider_locations")
 def get_rider_locations():
-
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT rider_id as id, lat, lng FROM rider_location")
-
-    rows = cursor.fetchall()
-
-    data=[]
-
-    for r in rows:
-        data.append({
-            "id": r["id"],
-            "lat": r["lat"],
-            "lng": r["lng"]
-        })
-
-    conn.close()
-
-    return jsonify(data)
+    try:
+        conn = sqlite3.connect("database.db")
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("SELECT rider_id as id, latitude as lat, longitude as lng FROM rider_location")
+        rows = cursor.fetchall()
+        data = [{"id": r["id"], "lat": r["lat"], "lng": r["lng"]} for r in rows]
+        conn.close()
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 #------------------RIDER MAP--------------------------
 @app.route("/admin_rider_map")
 def admin_rider_map():
@@ -1182,3 +1228,5 @@ def handle_message(msg):
 
 if __name__ == '__main__':
     socketio.run(app, host="0.0.0.0", port=5000)
+#if __name__ == '__main__':
+#    socketio.run(app, debug=True)

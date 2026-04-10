@@ -71,9 +71,7 @@
 </td>
 
 <td>
-<span class="status {{ order.payment_status if order.payment_status else 'PendingPayment' }}">
-{{ order.payment_status if order.payment_status else 'Pending' }}
-</span>
+<span class="status {{ order.payment_status or 'PendingPayment' }}"></span>
 </td>
 
 <td>{{ order.created_at }}</td>

@@ -1,5 +1,6 @@
 import eventlet
-eventlet.monkey_patch()
+eventlet.monkey_patch()  # <- MUST be first
+
 from flask import Flask, render_template, request, redirect, session, flash, url_for, jsonify
 import sqlite3
 import os
@@ -11,6 +12,9 @@ from flask_socketio import SocketIO, emit
 import eventlet
 import requests
 
+import os
+from werkzeug.utils import secure_filename
+
 
 
 app = Flask(__name__)
@@ -19,6 +23,7 @@ socketio = SocketIO(app)
 DB_NAME = "database.db"
 UPLOAD_FOLDER = "static/images"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+UPLOAD_FOLDER = "static/profile_pics"
 
 # FLASK MAIL CONFIG
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
@@ -248,8 +253,36 @@ def admin_dashboard():
                            products=products, revenue=revenue,
                            total_orders=total_orders, total_users=total_users,
                            total_products=total_products, labels=labels, values=values)
+						 
 
-#ADMIN ORDERS
+#-----------------Add Product---------------------
+@app.route("/add_product", methods=["POST"])
+def add_product():
+
+    name = request.form["name"]
+    price = request.form["price"]
+    quantity = request.form["quantity"]
+    description = request.form["description"]
+
+    image = request.files["image"]
+
+    filename = image.filename
+    image_path = "uploads/" + filename
+    image.save("static/" + image_path)
+
+    db = get_db()
+    cursor = db.cursor()
+
+    cursor.execute("""
+        INSERT INTO products(name,price,quantity,description,image)
+        VALUES(?,?,?,?,?)
+    """,(name,price,quantity,description,image_path))
+
+    db.commit()
+
+    return redirect("/admin_dashboard")
+	
+#-------------------ADMIN ORDERS---------------------------------------
 @app.route('/admin_orders')
 def admin_orders():
     db = get_db()
@@ -439,70 +472,277 @@ def verify_otp():
 # ---------------- USER DASHBOARD ----------------
 @app.route("/user_dashboard")
 def user_dashboard():
+
+    # CHECK LOGIN
     if "user" not in session:
         return redirect("/user_login")
 
     user_id = session["user"]
-    search = request.args.get("search", "")
+
+    search = request.args.get("search")
+    category = request.args.get("category")
+
     db = get_db()
     cursor = db.cursor()
-    if search:
-        cursor.execute("SELECT * FROM products WHERE name LIKE ? OR description LIKE ?",
-                       ('%' + search + '%', '%' + search + '%'))
-    else:
-        cursor.execute("SELECT * FROM products")
-    products = cursor.fetchall()
-    cursor.execute("SELECT COUNT(*) FROM order_history WHERE user_id=?", (user_id,))
-    order_count = cursor.fetchone()[0]
-    cursor.execute("SELECT SUM(quantity) as cart_count FROM orders WHERE user_id=?", (user_id,))
-    cart_count = cursor.fetchone()["cart_count"] or 0
-    db.close()
-    return render_template("user_dashboard.html", products=products,
-                           order_count=order_count, cart_count=cart_count)
 
+    # -----------------------------
+    # PRODUCTS QUERY
+    # -----------------------------
+    query = "SELECT * FROM products WHERE 1=1"
+    params = []
+
+    # SEARCH FILTER
+    if search:
+        query += " AND (name LIKE ? OR description LIKE ?)"
+        params.append('%' + search + '%')
+        params.append('%' + search + '%')
+
+    # CATEGORY FILTER
+    if category:
+        query += " AND LOWER(category)=LOWER(?)"
+        params.append(category)
+
+    cursor.execute(query, params)
+    products = cursor.fetchall()
+
+    # -----------------------------
+    # ORDER COUNT
+    # -----------------------------
+    cursor.execute(
+        "SELECT COUNT(*) FROM order_history WHERE user_id=?",
+        (user_id,)
+    )
+    order_count = cursor.fetchone()[0]
+
+    # -----------------------------
+    # CART COUNT (FIXED)
+    # -----------------------------
+    cursor.execute("""
+        SELECT COALESCE(SUM(quantity),0) AS cart_count
+        FROM cart
+        WHERE user_id=? AND status='Cart'
+    """, (user_id,))
+
+    cart_count = cursor.fetchone()["cart_count"]
+
+    # -----------------------------
+    # USER PROFILE
+    # -----------------------------
+    cursor.execute(
+        "SELECT * FROM users WHERE id=?",
+        (user_id,)
+    )
+    user = cursor.fetchone()
+
+    db.close()
+
+    return render_template(
+        "user_dashboard.html",
+        products=products,
+        order_count=order_count,
+        cart_count=cart_count,
+        user=user
+    )
+	#--------------------user Profile---------------------	
+
+
+def get_db_connection():
+    conn = sqlite3.connect(DB_NAME)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+@app.route("/profile", methods=["GET"])
+def profile():
+    if "user" not in session:
+        return redirect("/user_login")
+
+    user_id = session["user"]
+
+    conn = get_db_connection()
+    user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    conn.close()
+
+    return render_template("profile.html", user=user)
+
+@app.route("/update_profile", methods=["POST"])
+def update_profile():
+    if "user" not in session:
+        return redirect("/user_login")
+
+    user_id = session["user"]
+
+    username = request.form.get("username")
+    email = request.form.get("email")
+    phoneno = request.form.get("phoneno")
+
+    # Handle profile picture
+    file = request.files.get("profile_pic")
+    profile_pic = None
+    if file and file.filename != "":
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+        profile_pic = f"uploads/{filename}"
+
+    conn = get_db_connection()
+    if profile_pic:
+        conn.execute("""
+            UPDATE users 
+            SET username = ?, email = ?, phoneno = ?, profile_pic = ? 
+            WHERE id = ?
+        """, (username, email, phoneno, profile_pic, user_id))
+    else:
+        conn.execute("""
+            UPDATE users 
+            SET username = ?, email = ?, phoneno = ? 
+            WHERE id = ?
+        """, (username, email, phoneno, user_id))
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("profile"))
 # ---------------- CART ROUTES ----------------
 @app.route("/add_to_cart/<int:product_id>", methods=["POST"])
 def add_to_cart(product_id):
-    if "user" not in session:
-        return jsonify({"success": False, "error": "Login required"}), 401
 
     user_id = session["user"]
-    qty = int(request.form.get("qty", 1))
-    db = get_db()
-    cursor = db.cursor()
-    cursor.execute("SELECT * FROM orders WHERE user_id=? AND product_id=?", (user_id, product_id))
-    existing = cursor.fetchone()
-    if existing:
-        new_qty = existing["quantity"] + qty
-        cursor.execute("UPDATE orders SET quantity=? WHERE id=?", (new_qty, existing["id"]))
+    qty = int(request.form.get("qty",1))
+
+    conn = sqlite3.connect("database.db")
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    # get product
+    cursor.execute("SELECT * FROM products WHERE id=?", (product_id,))
+    product = cursor.fetchone()
+
+    # check stock
+    if product["quantity"] < qty:
+        return jsonify({"success":False,"error":"Not enough stock"})
+
+    # check existing cart item
+    cursor.execute(
+        "SELECT * FROM cart WHERE user_id=? AND product_id=?",
+        (user_id, product_id)
+    )
+    item = cursor.fetchone()
+
+    if item:
+        # update quantity
+        cursor.execute(
+            "UPDATE cart SET quantity = quantity + ?, status='Cart' WHERE id=?",
+            (qty, item["id"])
+        )
     else:
-        cursor.execute("INSERT INTO orders(user_id, product_id, quantity) VALUES(?,?,?)", (user_id, product_id, qty))
-    db.commit()
-    cursor.execute("SELECT SUM(quantity) as cart_count FROM orders WHERE user_id=?", (user_id,))
-    cart_count = cursor.fetchone()["cart_count"] or 0
-    db.close()
-    return jsonify({"success": True, "cart_count": cart_count})
-#CART
+        # insert new cart item
+        cursor.execute("""
+        INSERT INTO cart (user_id,product_id,product_name,price,quantity,image,status)
+        VALUES (?,?,?,?,?,?,'Cart')
+        """,(user_id,product_id,product["name"],product["price"],qty,product["image"]))
+
+    # reduce stock
+    cursor.execute(
+        "UPDATE products SET quantity = quantity - ? WHERE id=?",
+        (qty,product_id)
+    )
+
+    conn.commit()
+
+    # cart count
+    cursor.execute("SELECT COALESCE(SUM(quantity),0) FROM cart WHERE user_id=? AND status='Cart'", (user_id,))
+    cart_count = cursor.fetchone()[0]
+
+    conn.close()
+
+    return jsonify({"success":True,"cart_count":cart_count})
+#------------------CART--------------------------------
 @app.route("/cart")
-def cart():
+def view_cart():
+
     if "user" not in session:
         return redirect("/user_login")
+
     user_id = session["user"]
+
     db = get_db()
     cursor = db.cursor()
-    cursor.execute("""
-    SELECT orders.id as order_id, products.name, products.price,
-           products.image, orders.quantity
-    FROM orders
-    JOIN products ON orders.product_id = products.id
-    WHERE orders.user_id=?
-    """, (user_id,))
-    items = cursor.fetchall()
-    total = sum(item["price"] * item["quantity"] for item in items)
-    cart_count = sum(item["quantity"] for item in items)
-    db.close()
-    return render_template("cart.html", items=items, total=total, cart_count=cart_count)
 
+    cursor.execute("""
+        SELECT 
+            c.id,
+            c.product_name as name,c.product_id,
+            c.price,
+            c.image,
+            c.quantity
+        FROM cart c join products p on p.id=c.product_id 
+        WHERE user_id=? AND status='Cart'
+    """, (user_id,))
+
+    items = cursor.fetchall()
+
+    total = 0
+    for item in items:
+        total += item["price"] * item["quantity"]
+
+    db.close()
+
+    return render_template(
+        "cart.html",
+        items=items,
+        total=total
+    )
+#--------------------Update Quantity--------------------------
+@app.route("/update_cart/<int:product_id>", methods=["POST"])
+def update_cart(product_id):
+    if "user" not in session:
+        return redirect("/user_login")
+
+    qty = int(request.form.get("qty", 1))
+    user_id = session["user"]
+
+    db = get_db()
+    cursor = db.cursor()
+
+    # Check if item exists in cart
+    cursor.execute("SELECT id FROM cart WHERE user_id=? AND product_id=? AND status='Cart'", (user_id, product_id))
+    existing = cursor.fetchone()
+
+    if existing:
+        # Update quantity
+        cursor.execute("UPDATE cart SET quantity=? WHERE id=?", (qty, existing["id"]))
+    else:
+        # Insert new
+        cursor.execute("INSERT INTO cart(user_id, product_id, product_name, price, image, quantity, status) VALUES (?,?,?,?,?,?,?)",
+                       (user_id, product_id, "Product Name Placeholder", 0, "default.jpg", qty, "Cart"))  # Adjust product info as needed
+
+    db.commit()
+    db.close()
+    return redirect("/cart")
+#---------------------------remove item-------------------------
+@app.route("/remove_item/<int:item_id>")
+def remove_item(item_id):
+
+    conn = sqlite3.connect("database.db")
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    # Get cart item
+    cursor.execute("SELECT * FROM cart WHERE id=?", (item_id,))
+    item = cursor.fetchone()
+
+    # Return stock
+    cursor.execute(
+        "UPDATE products SET quantity = quantity + ? WHERE id=?",
+        (item["quantity"], item["product_id"])
+    )
+
+    # Delete from cart
+    cursor.execute("DELETE FROM cart WHERE id=?", (item_id,))
+
+    conn.commit()
+    conn.close()
+
+    return redirect("/cart")
 # ---------------- CHECKOUT PAGE ----------------
 @app.route("/checkout", methods=["GET", "POST"])
 @app.route("/checkout/<int:address_id>", methods=["GET", "POST"])
@@ -567,12 +807,10 @@ def checkout_page(address_id=None):
 # ---------------- SAVE ADDRESS ----------------
 @app.route("/save_address", methods=["POST"])
 def save_address():
-
     if "user" not in session:
         return redirect("/user_login")
 
     user_id = session["user"]
-
     street = request.form["street"]
     house_no = request.form["house_no"]
     landmark = request.form["landmark"]
@@ -582,13 +820,10 @@ def save_address():
 
     conn = sqlite3.connect("database.db")
     cursor = conn.cursor()
-
     cursor.execute("""
-    INSERT INTO addresses
-    (user_id, street, house_no, landmark, latitude, longitude, full_address)
-    VALUES (?,?,?,?,?,?,?)
+        INSERT INTO addresses (user_id, street, house_no, landmark, latitude, longitude, full_address)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
     """, (user_id, street, house_no, landmark, latitude, longitude, full_address))
-
     conn.commit()
     conn.close()
 
@@ -598,7 +833,6 @@ def save_address():
 # ---------------- SHOW ADDRESSES ----------------
 @app.route("/addresses")
 def addresses():
-
     if "user" not in session:
         return redirect("/user_login")
 
@@ -610,15 +844,62 @@ def addresses():
 
     cursor.execute("SELECT * FROM addresses WHERE user_id=?", (user_id,))
     saved_addresses = cursor.fetchall()
-
-    print("Logged user:", user_id)
-    print("Addresses:", saved_addresses)
-
     conn.close()
 
     return render_template("addresses.html", saved_addresses=saved_addresses)
+#----------------------Edit Address-----------------------------
+@app.route('/edit_address/<int:address_id>', methods=['GET', 'POST'])
+def edit_address(address_id):
+    if "user" not in session:
+        return redirect("/user_login")
 
+    user_id = session["user"]
+    conn = sqlite3.connect("database.db")
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
 
+    # Fetch address
+    cursor.execute("SELECT * FROM addresses WHERE id=? AND user_id=?", (address_id, user_id))
+    address = cursor.fetchone()
+
+    if not address:
+        conn.close()
+        return "Address not found or you don't have permission."
+
+    if request.method == "POST":
+        street = request.form["street"]
+        house_no = request.form["house_no"]
+        landmark = request.form["landmark"]
+        latitude = request.form["latitude"]
+        longitude = request.form["longitude"]
+        full_address = request.form["full_address"]
+
+        cursor.execute("""
+            UPDATE addresses
+            SET street=?, house_no=?, landmark=?, latitude=?, longitude=?, full_address=?
+            WHERE id=? AND user_id=?
+        """, (street, house_no, landmark, latitude, longitude, full_address, address_id, user_id))
+        conn.commit()
+        conn.close()
+        return redirect("/addresses")
+
+    conn.close()
+    return render_template("edit_address.html", address=address)
+#------------------------Delete Address----------------------
+@app.route('/delete_address/<int:address_id>')
+def delete_address(address_id):
+    if "user" not in session:
+        return redirect("/user_login")
+
+    user_id = session["user"]
+
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM addresses WHERE id=? AND user_id=?", (address_id, user_id))
+    conn.commit()
+    conn.close()
+
+    return redirect("/addresses")
 # ---------------- GENERATE ORDER NUMBER ----------------
 def generate_order_number():
     return uuid.uuid4().hex[:8].upper()
@@ -648,14 +929,14 @@ def payment():
 
     # GET CART ITEMS
     cursor.execute("""
-        SELECT orders.id as order_id,
+        SELECT cart.id as order_id,
                products.id as product_id,
                products.name,
                products.price,
-               orders.quantity
-        FROM orders
-        JOIN products ON orders.product_id = products.id
-        WHERE orders.user_id=?
+               cart.quantity
+        FROM cart 
+        JOIN products ON cart.product_id = products.id
+        WHERE cart.user_id=?
     """, (user_id,))
 
     items = cursor.fetchall()
@@ -790,9 +1071,18 @@ def payment_success(order_number=None):
     if not order_number:
         return redirect("/user_dashboard")
 
+    user_id = session["user"]
+    address_id = session.get("selected_address")
+
     db = get_db()
     cursor = db.cursor()
 
+    # ✅ Clear cart (mark items ordered)
+    cursor.execute("DELETE FROM cart WHERE user_id=?", (user_id,))
+
+    db.commit()
+
+    # ✅ Fetch order details
     cursor.execute("""
         SELECT oh.*, p.name, p.image
         FROM order_history oh
@@ -804,6 +1094,9 @@ def payment_success(order_number=None):
 
     db.close()
 
+    # Clear session address
+    session.pop("selected_address", None)
+
     if not order_details:
         return redirect("/user_dashboard")
 
@@ -812,6 +1105,7 @@ def payment_success(order_number=None):
         order_number=order_number,
         order=order_details
     )
+
 # ---------------- MY ORDERS ----------------
 
 	
@@ -1225,7 +1519,7 @@ def handle_message(msg):
     print('Message received:', msg)
     emit('response', f'Server received: {msg}')
 
-if __name__ == '__main__':
-    socketio.run(app, host="0.0.0.0", port=5000)
 #if __name__ == '__main__':
-#    socketio.run(app, debug=True)
+#    socketio.run(app, host="0.0.0.0", port=5000)
+if __name__ == '__main__':
+    socketio.run(app, debug=True)

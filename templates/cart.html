@@ -57,14 +57,17 @@
         <td>{{ item.name }}</td>
         <td><img src="{{ url_for('static', filename=item.image) }}" class="product-img"></td>
         <td>₹{{ item.price }}</td>
-        <td>
-            <form action="/update_cart/{{ item.order_id }}" method="POST">
-                <input type="number" name="qty" value="{{ item.quantity }}" min="1">
-                <button type="submit">Update</button>
-            </form>
-        </td>
+        
+           <td>
+    <form action="/update_cart/{{ item.product_id }}" method="POST">
+        <input type="number" name="qty" value="{{ item.quantity }}" min="1">
+        <button type="submit" class="btn-action">Update</button>
+    </form>
+</td>
+			
+     
         <td>₹{{ item.price * item.quantity }}</td>
-        <td><a href="/remove_item/{{ item.order_id }}"><button>Remove</button></a></td>
+        <td><a href="/remove_item/{{ item.id }}" class="btn btn-danger"><button>Remove</button></a></td>
     </tr>
     {% endfor %}
     <tr>
@@ -82,4 +85,7 @@
  <a class="btn-back" onclick="window.location.href='/user_dashboard'">← Back to Home</a>
 
 </body>
+<script>
+fetch("/update_cart/" + product.id, { method: "POST", body: formData })
+</script>
 </html>

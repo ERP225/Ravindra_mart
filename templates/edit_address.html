@@ -1,0 +1,10 @@
+<h2>Edit Address</h2>
+<form method="POST">
+    Street: <input type="text" name="street" value="{{ address['street'] }}"><br>
+    House No: <input type="text" name="house_no" value="{{ address['house_no'] }}"><br>
+    Landmark: <input type="text" name="landmark" value="{{ address['landmark'] }}"><br>
+    Latitude: <input type="text" name="latitude" value="{{ address['latitude'] }}"><br>
+    Longitude: <input type="text" name="longitude" value="{{ address['longitude'] }}"><br>
+    Full Address: <input type="text" name="full_address" value="{{ address['full_address'] }}"><br>
+    <button type="submit">Update</button>
+</form>

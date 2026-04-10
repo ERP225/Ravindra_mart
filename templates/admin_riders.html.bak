@@ -1,0 +1,37 @@
+<h2>Rider Approvals</h2>
+
+<table class="table">
+
+<tr>
+<th>Name</th>
+<th>Phone</th>
+<th>Vehicle</th>
+<th>Status</th>
+<th>Action</th>
+</tr>
+
+{% for rider in riders %}
+
+<tr>
+<td>{{rider.name}}</td>
+<td>{{rider.phone}}</td>
+<td>{{rider.vehicle}}</td>
+<td>{{rider.status}}</td>
+
+<td>
+
+{% if rider.status == "Pending" %}
+
+<a href="/approve_rider/{{rider.id}}" class="btn btn-success btn-sm">
+Approve
+</a>
+
+{% endif %}
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</table>

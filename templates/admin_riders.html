@@ -1,6 +1,96 @@
-<h2>Rider Approvals</h2>
+{% extends "admin_layout.html" %}
+
+{% block content %}
+
+<style>
+
+.page-title{
+margin-bottom:20px;
+font-size:22px;
+font-weight:600;
+}
+
+.table-card{
+background:white;
+padding:20px;
+border-radius:10px;
+box-shadow:0 3px 10px rgba(0,0,0,0.1);
+}
+
+.table{
+width:100%;
+border-collapse:collapse;
+}
+
+.table th{
+background:#1f2a40;
+color:white;
+padding:12px;
+text-align:center;
+}
+
+.table td{
+padding:12px;
+border-bottom:1px solid #eee;
+text-align:center;
+}
+
+.table tr:hover{
+background:#f9f9f9;
+}
+
+/* Status */
+
+.status{
+padding:5px 10px;
+border-radius:20px;
+font-size:12px;
+font-weight:600;
+color:white;
+display:inline-block;
+}
+
+.Pending{
+background:#f39c12;
+}
+
+.Approved{
+background:#27ae60;
+}
+
+.Rejected{
+background:#e74c3c;
+}
+
+/* Buttons */
+
+.btn{
+padding:6px 12px;
+border:none;
+border-radius:6px;
+text-decoration:none;
+font-size:13px;
+cursor:pointer;
+}
+
+.btn-approve{
+background:#27ae60;
+color:white;
+}
+
+.btn-approve:hover{
+background:#219150;
+}
+
+</style>
+
+<h2 class="page-title">🚴 Rider Approvals</h2>
+
+<div class="table-card">
 
 <table class="table">
+
+<thead>
 
 <tr>
 <th>Name</th>
@@ -10,21 +100,37 @@
 <th>Action</th>
 </tr>
 
+</thead>
+
+<tbody>
+
 {% for rider in riders %}
 
 <tr>
-<td>{{rider.name}}</td>
-<td>{{rider.phone}}</td>
-<td>{{rider.vehicle}}</td>
-<td>{{rider.status}}</td>
+
+<td>{{ rider.name }}</td>
+
+<td>{{ rider.phone }}</td>
+
+<td>{{ rider.vehicle }}</td>
+
+<td>
+<span class="status {{ rider.status }}">
+{{ rider.status }}
+</span>
+</td>
 
 <td>
 
 {% if rider.status == "Pending" %}
 
-<a href="/approve_rider/{{rider.id}}" class="btn btn-success btn-sm">
+<a href="/approve_rider/{{ rider.id }}" class="btn btn-approve">
 Approve
 </a>
+
+{% else %}
+
+<span style="color:gray;">No Action</span>
 
 {% endif %}
 
@@ -34,4 +140,10 @@ Approve
 
 {% endfor %}
 
+</tbody>
+
 </table>
+
+</div>
+
+{% endblock %}

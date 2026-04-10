@@ -12,7 +12,8 @@
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: #f4f6f9;
-    margin:0; padding:0;
+    margin:0;
+    padding:0;
 }
 
 .container {
@@ -57,11 +58,11 @@ h2 {
 }
 
 /* Status Colors */
-.status.pending { background:#f59e0b; }
-.status.accepted { background:#3b82f6; }
-.status.picked { background:#10b981; }
-.status.delivered { background:#16a34a; }
-.status.cancelled { background:#ef4444; }
+.status.pending { background:#f59e0b; }        /* orange */
+.status.accepted { background:#3b82f6; }       /* blue */
+.status.picked { background:#10b981; }         /* green */
+.status.delivered { background:#16a34a; }      /* dark green */
+.status.cancelled { background:#ef4444; }      /* red */
 </style>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -71,7 +72,9 @@ h2 {
 <body>
 <div class="container">
     <h2>Track Order #{{ order.order_number }}</h2>
+
     <div id="map"></div>
+
     <div class="status-card">
         <span>📦 Order Status:</span>
         <b class="status {{ order.rider_status|lower|replace(' ','_') }}">{{ order.rider_status }}</b>
@@ -82,7 +85,6 @@ h2 {
 const orderId = {{ order.id }};
 const map = L.map('map').setView([17.440894,78.444348],13);
 
-// OpenStreetMap tiles
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
  attribution:'© OpenStreetMap contributors'
 }).addTo(map);
@@ -122,53 +124,48 @@ async function updateMap(){
             }).addTo(map).bindPopup("🏠 Customer");
         }
 
-        // Rider marker (🏍️ emoji)
-        if(data.rider_lat && data.rider_lng){
-            const bikeIcon = L.divIcon({
-                html: '<div style="font-size: 40px;">🏍️</div>',
-                className: '',
-                iconSize: [40,40],
-                iconAnchor: [20,40],
-                popupAnchor: [0,-35]
-            });
-            if(riderMarker){
-                riderMarker.setLatLng([data.rider_lat,data.rider_lng]);
-            } else {
-                riderMarker = L.marker([data.rider_lat,data.rider_lng], {icon: bikeIcon})
-                    .addTo(map)
-                    .bindPopup("Rider 🏍️");
-            }
-        }
+        // Rider marker (Motorbike icon)
+       // Rider marker (🏍️ emoji)
+// Rider marker (🏍️ emoji)
+if(data.rider_lat && data.rider_lng){
+    const bikeIcon = L.divIcon({
+        html: '<div style="font-size: 40px;">🏍️</div>', // increase size here
+        className: '',   // remove default styles
+        iconSize: [40, 40],
+        iconAnchor: [20, 40], // center bottom
+        popupAnchor: [0, -35]
+    });
 
-        // Route from rider to customer
+    if(riderMarker){
+        riderMarker.setLatLng([data.rider_lat,data.rider_lng]);
+    } else {
+        riderMarker = L.marker([data.rider_lat,data.rider_lng], {icon: bikeIcon})
+            .addTo(map)
+            .bindPopup("Rider 🏍️");
+    }
+}
+
+        // Route
         if(data.rider_lat && data.rider_lng && data.cust_lat && data.cust_lng){
             if(routeControl){
                 routeControl.setWaypoints([
-                    L.latLng(data.rider_lat, data.rider_lng),
-                    L.latLng(data.cust_lat, data.cust_lng)
+                    L.latLng(data.rider_lat,data.rider_lng),
+                    L.latLng(data.cust_lat,data.cust_lng)
                 ]);
             } else {
                 routeControl = L.Routing.control({
                     waypoints:[
-                        L.latLng(data.rider_lat, data.rider_lng),
-                        L.latLng(data.cust_lat, data.cust_lng)
+                        L.latLng(data.rider_lat,data.rider_lng),
+                        L.latLng(data.cust_lat,data.cust_lng)
                     ],
-                    router: L.Routing.osrmv1({serviceUrl: 'https://router.project-osrm.org/route/v1'}),
-                    lineOptions: {styles:[{color:'blue', weight:5}]},
+                    lineOptions:{styles:[{color:'blue',weight:5}]},
                     addWaypoints:false,
                     draggableWaypoints:false,
-                    fitSelectedRoutes:false, // we'll fit bounds manually
+                    fitSelectedRoutes:true,
                     show:false,
-                    createMarker: () => null
+                    createMarker:function(){return null;}
                 }).addTo(map);
             }
-        }
-
-        // Fit map to all markers
-        const markers = [storeMarker, customerMarker, riderMarker].filter(m => m);
-        if(markers.length){
-            const group = L.featureGroup(markers);
-            map.fitBounds(group.getBounds().pad(0.2));
         }
 
     } catch(err){
@@ -176,9 +173,9 @@ async function updateMap(){
     }
 }
 
-// Initial update & auto-refresh every 5s
+// Initial update & auto-refresh
 updateMap();
-setInterval(updateMap, 5000);
+setInterval(updateMap,5000);
 </script>
 </body>
 </html>

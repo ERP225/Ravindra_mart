@@ -306,7 +306,6 @@ margin-top:8px;
 <div class="price">₹{{ product.price }}</div>
 
 <div class="category">{{ product.category }}</div>
-<div class="description">{{ product.description }}</div>
 
 <p>Stock: {{ product.quantity }}</p>
 

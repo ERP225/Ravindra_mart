@@ -54,8 +54,11 @@
     <b>{{ addr['street'] }}, {{ addr['house_no'] }}</b>{% if addr['landmark'] %} ({{ addr['landmark'] }}){% endif %}<br>
     <small>{{ addr['full_address'] }}</small><br>
     <a href="{{ url_for('checkout_page', address_id=addr['id']) }}" class="btn btn-primary btn-sm">Deliver Here</a>
-    <a href="/edit_address/{{ addr['id'] }}" class="btn btn-warning btn-sm">Edit</a>
-    <a href="/delete_address/{{ addr['id'] }}" class="btn btn-danger btn-sm">Delete</a>
+ 
+        
+       <a href="/edit_address/{{ addr['id'] }}" class="btn btn-primary btn-sm><button">Edit</button></a> 
+        <a href="/delete_address/{{ addr['id'] }}" class="btn btn-primary btn-sm><button">Delete</button></a>
+ 
 </div>
 {% else %}
 <p>No saved addresses yet.</p>

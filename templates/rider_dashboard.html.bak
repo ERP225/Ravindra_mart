@@ -152,7 +152,7 @@ async function updateRiders(){
                 riderMarkers[r.id].setLatLng([lat,lng]);
             } else {
                 riderMarkers[r.id] = L.marker([lat,lng],{
-                    icon:L.icon({iconUrl:"https://cdn-icons-png.flaticon.com/512/1008/1008100.png",iconSize:[50,50]})
+                    icon:L.icon({iconUrl:"https://cdn-icons-png.flaticon.com/512/1008/1008100.png",iconSize:[30,30]})
                 }).addTo(map).bindPopup("<b>"+(r.name||"Rider")+"</b>");
             }
 function animateMarker(marker, newLat, newLng){

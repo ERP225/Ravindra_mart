@@ -1,153 +1,196 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>My Orders - Ravi Mart</title>
-<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+{% extends "dashboard_panel.html" %}
+
+{% block content %}
+
 <style>
-body {
-    font-family: 'Roboto', sans-serif;
-    background: #f5f7fb;
-    margin: 0;
-    padding: 0;
-}
-.container {
-    max-width: 1000px;
-    margin: 30px auto;
-    padding: 20px;
-}
-h2 {
-    text-align: center;
-    margin-bottom: 20px;
-    color: #1f2937;
-}
-.order-card {
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    padding: 20px;
-    margin-bottom: 20px;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    transition: 0.3s;
-}
-.order-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-}
-.order-details {
-    flex: 1 1 60%;
-}
-.order-details p {
-    margin: 6px 0;
-    font-size: 0.95rem;
-    color: #333;
-}
-.order-details .product-name {
-    font-weight: 600;
-    font-size: 1rem;
-}
-.order-img {
-    flex: 0 0 100px;
-    margin-right: 15px;
-}
-.order-img img {
-    width: 100px;
-    height: 100px;
-    object-fit: cover;
-    border-radius: 8px;
-}
-.status {
-    padding: 5px 10px;
-    border-radius: 6px;
-    font-weight: 500;
-    display: inline-block;
-    min-width: 80px;
-    text-align: center;
+
+.orders-wrapper{
+max-width:1000px;
+margin:auto;
+padding:20px;
 }
 
-/* Order Status Colors */
-.status.pending { background:#f39c12; color:black; }
-.status.out_for_delivery { background:#f1c40f; color:black; }
-.status.completed, .status.delivered { background:#27ae60; color:white; }
-.status.cancelled { background:#e74c3c; color:white; }
-.status.packed { background:#9b59b6; color:white; }
-.status.shipped { background:#2980b9; color:white; }
-
-/* Payment Status */
-.status.paid { background:#27ae60; color:white; }
-.status.unpaid { background:#f39c12; color:black; }
-.status.refunded { background:#3498db; color:white; }
-
-.track-btn {
-    background:#3498db;
-    color:white;
-    border:none;
-    padding:8px 16px;
-    border-radius:8px;
-    cursor:pointer;
-    transition:0.3s;
-}
-.track-btn:hover {
-    background:#1d4ed8;
+.orders-title{
+font-size:28px;
+font-weight:600;
+margin-bottom:20px;
+color:#1f2937;
 }
 
-.back-btn {
-    background:#555;
-    color:white;
-    border:none;
-    padding:10px 20px;
-    border-radius:8px;
-    cursor:pointer;
-    margin-top:20px;
-    display: inline-block;
+/* Order Card */
+
+.order-card{
+background:white;
+border-radius:12px;
+box-shadow:0 4px 15px rgba(0,0,0,0.1);
+padding:20px;
+margin-bottom:20px;
+display:flex;
+flex-wrap:wrap;
+align-items:center;
+justify-content:space-between;
+transition:.3s;
 }
-.back-btn:hover {
-    background:#333;
+
+.order-card:hover{
+transform:translateY(-3px);
+box-shadow:0 8px 20px rgba(0,0,0,0.15);
+}
+
+.order-img{
+flex:0 0 100px;
+margin-right:15px;
+}
+
+.order-img img{
+width:100px;
+height:100px;
+object-fit:cover;
+border-radius:8px;
+}
+
+.order-details{
+flex:1;
+}
+
+.order-details p{
+margin:5px 0;
+font-size:14px;
+}
+
+.product-name{
+font-weight:600;
+font-size:16px;
+}
+
+/* Status */
+
+.status{
+padding:5px 10px;
+border-radius:6px;
+font-weight:500;
+display:inline-block;
+}
+
+/* Order Status */
+
+.status.pending{background:#f39c12;color:black;}
+.status.out_for_delivery{background:#f1c40f;color:black;}
+.status.completed,.status.delivered{background:#27ae60;color:white;}
+.status.cancelled{background:#e74c3c;color:white;}
+.status.packed{background:#9b59b6;color:white;}
+.status.shipped{background:#2980b9;color:white;}
+
+/* Payment */
+
+.status.paid{background:#27ae60;color:white;}
+.status.unpaid{background:#f39c12;color:black;}
+.status.refunded{background:#3498db;color:white;}
+
+/* Button */
+
+.track-btn{
+background:#3498db;
+color:white;
+border:none;
+padding:8px 16px;
+border-radius:8px;
+cursor:pointer;
+transition:.3s;
+}
+
+.track-btn:hover{
+background:#1d4ed8;
 }
 
 /* Responsive */
+
 @media(max-width:768px){
-    .order-card { flex-direction: column; align-items: flex-start; }
-    .order-img { margin-bottom: 10px; }
+
+.order-card{
+flex-direction:column;
+align-items:flex-start;
 }
+
+.order-img{
+margin-bottom:10px;
+}
+
+}
+
 </style>
-</head>
-<body>
-<div class="container">
-<h2>📝 My Orders</h2>
-<a href="{{ url_for('user_dashboard') }}">
-<button class="back-btn">Back to Home</button>
-</a>
-{% for order in orders %}
-<div class="order-card">
-    <div class="order-img">
-        <img src="/static/{{ order.image }}" alt="{{ order.name }}">
-    </div>
-    <div class="order-details">
-        <p class="product-name">{{ order.name }}</p>
-        <p>Order No: {{ order.order_number }}</p>
-        <p>Quantity: {{ order.quantity }}</p>
-        <p>Total: ₹{{ order.price * order.quantity }}</p>
-        <p>Ordered On: {{ order.created_at }}</p>
-        <p>Order Status: <span class="status {{ order.status|lower }}">{{ order.status }}</span></p>
-        <p>Payment Status: <span class="status {{ order.payment_status|lower }}">{{ order.payment_status }}</span></p>
-        {% if order.payment_status=='Refunded' %}
-        <p>Refund: <span class="status refunded">₹{{ order.price * order.quantity }}</span></p>
-        {% endif %}
-    </div>
-    <div class="order-actions">
-        {% if order.status != 'Delivered' %}
-        <a href="/track_order/{{ order.id }}"><button class="track-btn">Track Order</button></a>
-        {% endif %}
-    </div>
+
+<div class="orders-wrapper">
+
+<div class="orders-title">
+📝 My Orders
 </div>
+
+{% for order in orders %}
+
+<div class="order-card">
+
+<div class="order-img">
+<img src="{{ url_for('static', filename=order.image) }}">
+</div>
+
+<div class="order-details">
+
+<p class="product-name">{{ order.name }}</p>
+
+<p>Order No: {{ order.order_number }}</p>
+
+<p>Quantity: {{ order.quantity }}</p>
+
+<p>Total: ₹{{ order.price * order.quantity }}</p>
+
+<p>Ordered On: {{ order.created_at }}</p>
+
+<p>
+Order Status:
+<span class="status {{ order.status|lower }}">
+{{ order.status }}
+</span>
+</p>
+
+<p>
+Payment Status:
+<span class="status {{ order.payment_status|lower }}">
+{{ order.payment_status }}
+</span>
+</p>
+
+{% if order.payment_status == 'Refunded' %}
+
+<p>
+Refund:
+<span class="status refunded">
+₹{{ order.price * order.quantity }}
+</span>
+</p>
+
+{% endif %}
+
+</div>
+
+<div>
+
+{% if order.status != 'Delivered' %}
+
+<a href="/track_order/{{ order.id }}">
+<button class="track-btn">
+Track Order
+</button>
+</a>
+
+{% endif %}
+
+</div>
+
+</div>
+
 {% endfor %}
 
-
 </div>
-</body>
-</html>
+
+{% endblock %}

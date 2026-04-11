@@ -119,7 +119,9 @@ h2 {
 <body>
 <div class="container">
 <h2>📝 My Orders</h2>
-
+<a href="{{ url_for('user_dashboard') }}">
+<button class="back-btn">Back to Home</button>
+</a>
 {% for order in orders %}
 <div class="order-card">
     <div class="order-img">
@@ -145,9 +147,7 @@ h2 {
 </div>
 {% endfor %}
 
-<a href="{{ url_for('user_dashboard') }}">
-<button class="back-btn">Back to Home</button>
-</a>
+
 </div>
 </body>
 </html>

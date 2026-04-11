@@ -235,7 +235,7 @@ def admin_dashboard():
     cursor.execute("SELECT COUNT(*) FROM products")
     total_products = cursor.fetchone()[0]
 
-    cursor.execute("SELECT SUM(price*quantity) FROM order_history WHERE payment_status='Paid'")
+    cursor.execute("SELECT SUM(price*quantity) FROM order_history WHERE payment_status='paid'")
     revenue = cursor.fetchone()[0] or 0
 
     cursor.execute("""
@@ -263,10 +263,11 @@ def add_product():
     price = request.form["price"]
     quantity = request.form["quantity"]
     description = request.form["description"]
+    category = request.form["category"]
 
     image = request.files["image"]
 
-    filename = image.filename
+    filename = secure_filename(str(uuid.uuid4()) + "_" + image.filename)
     image_path = "images/" + filename
     image.save("static/" + image_path)
 
@@ -274,9 +275,9 @@ def add_product():
     cursor = db.cursor()
 
     cursor.execute("""
-        INSERT INTO products(name,price,quantity,description,image)
-        VALUES(?,?,?,?,?)
-    """,(name,price,quantity,description,image_path))
+        INSERT INTO products(name,price,quantity,description,image,category)
+        VALUES(?,?,?,?,?,?)
+    """, (name, price, quantity, description, image_path, category))
 
     db.commit()
 
@@ -1519,7 +1520,7 @@ def handle_message(msg):
     print('Message received:', msg)
     emit('response', f'Server received: {msg}')
 
-#if __name__ == '__main__':
-#    socketio.run(app, host="0.0.0.0", port=5000)
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    socketio.run(app, host="0.0.0.0", port=5000)
+#if __name__ == '__main__':
+#    socketio.run(app, debug=True)

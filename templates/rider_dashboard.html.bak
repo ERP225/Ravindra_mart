@@ -47,7 +47,7 @@
 <span class="badge bg-warning text-dark">On the way</span>
 <a href="/verify_delivery/{{ order.id }}" class="btn btn-success btn-sm">Verify OTP</a>
 {% elif order.rider_status == 'Accepted' %}
-<a href="/pickup_order/{{ order.id }}" class="btn btn-primary btn-sm">Pickup</a>
+<button class="btn btn-primary btn-sm" onclick="pickupOrder({{ order.id }})">Pickup</button>
 {% if order.pickup_address %}<small>Pickup: {{ order.pickup_address }}</small>{% endif %}
 {% elif order.rider_status in ['Pending','Assigned'] %}
 <a href="/accept_order/{{ order.id }}" class="btn btn-info btn-sm">Accept Order</a>
@@ -77,7 +77,13 @@ function parseCoord(val){
     const num = parseFloat(val);
     return isNaN(num)?null:num;
 }
+async function pickupOrder(id){
 
+    await fetch("/pickup_order/" + id);
+
+    // reload orders from backend
+    location.reload();
+}
 // Smoothly update route without flickering
 async function drawRouteSmooth(start, end, id, color="blue"){
     if(!start || !end) return;
@@ -152,7 +158,7 @@ async function updateRiders(){
                 riderMarkers[r.id].setLatLng([lat,lng]);
             } else {
                 riderMarkers[r.id] = L.marker([lat,lng],{
-                    icon:L.icon({iconUrl:"https://cdn-icons-png.flaticon.com/512/1008/1008100.png",iconSize:[30,30]})
+                    icon:L.icon({iconUrl:"https://cdn-icons-png.flaticon.com/512/1008/1008100.png",iconSize:[50,50]})
                 }).addTo(map).bindPopup("<b>"+(r.name||"Rider")+"</b>");
             }
 function animateMarker(marker, newLat, newLng){

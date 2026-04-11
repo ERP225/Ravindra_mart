@@ -155,7 +155,7 @@ async function updateRiders(){
 
             // Rider marker
             if(riderMarkers[r.id]){
-                riderMarkers[r.id].setLatLng([lat,lng]);
+                animateMarker(riderMarkers[r.id], lat, lng);
             } else {
                 riderMarkers[r.id] = L.marker([lat,lng],{
                     icon:L.icon({iconUrl:"https://cdn-icons-png.flaticon.com/512/1008/1008100.png",iconSize:[50,50]})

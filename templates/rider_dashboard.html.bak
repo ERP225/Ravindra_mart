@@ -154,19 +154,29 @@ async function updateRiders(){
 
 
             // Rider marker
-            if(riderMarkers[r.id]){
-                animateMarker(riderMarkers[r.id], lat, lng);
-            } else {
-                riderMarkers[r.id] = L.marker([lat,lng],{
-                    icon:L.icon({iconUrl:"https://cdn-icons-png.flaticon.com/512/1008/1008100.png",iconSize:[50,50]})
-                }).addTo(map).bindPopup("<b>"+(r.name||"Rider")+"</b>");
-            }
+          if(riderMarkers[r.id]){
+    animateMarker(riderMarkers[r.id], lat, lng);
+} else {
+    riderMarkers[r.id] = L.marker([lat,lng],{
+        icon:L.icon({
+            iconUrl:"https://cdn-icons-png.flaticon.com/512/1008/1008100.png",
+            iconSize:[50,50]
+        })
+    }).addTo(map).bindPopup("<b>"+(r.name||"Rider")+"</b>");
+}
+
+// auto follow only logged-in rider
+const riderId = parseInt("{{ session['rider'] }}");
+if(r.id === riderId){
+    map.flyTo([lat,lng],16,{animate:true,duration:1});
+}
+
 function animateMarker(marker, newLat, newLng){
 
     const start = marker.getLatLng();
     const end = L.latLng(newLat, newLng);
 
-    const duration = 1000; // animation time (1 second)
+    const duration = 1000;
     const frames = 30;
     let frame = 0;
 
@@ -188,7 +198,7 @@ function animateMarker(marker, newLat, newLng){
 
     }, duration / frames);
 }
-            // Remove routes of OTP verified orders
+// Remove routes of OTP verified orders
             orders.forEach(o=>{
                 if(o.is_otp_verified){
                     ["rider_store_","rider_customer_","store_customer_"].forEach(prefix=>{

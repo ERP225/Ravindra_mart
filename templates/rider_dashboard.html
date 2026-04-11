@@ -84,6 +84,13 @@ async function pickupOrder(id){
     // reload orders from backend
     location.reload();
 }
+async function initializeDashboard(){
+    initOrderMarkers();
+    await sendLocation();
+    await updateRiders();
+}
+
+initializeDashboard();
 // Smoothly update route without flickering
 async function drawRouteSmooth(start, end, id, color="blue"){
     if(!start || !end) return;

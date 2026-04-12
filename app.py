@@ -9,7 +9,6 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_mail import Mail, Message
 import random
 from flask_socketio import SocketIO, emit
-import eventlet
 import requests
 
 import os
@@ -23,14 +22,18 @@ socketio = SocketIO(app)
 DB_NAME = "database.db"
 UPLOAD_FOLDER = "static/images"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-UPLOAD_FOLDER = "static/profile_pics"
+
+PROFILE_UPLOAD_FOLDER = "static/profile_pics"
+os.makedirs(PROFILE_UPLOAD_FOLDER, exist_ok=True)
+
+app.config['UPLOAD_FOLDER'] = PROFILE_UPLOAD_FOLDER
 
 # FLASK MAIL CONFIG
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USERNAME'] = 'erp@zoihospitals.com'
-app.config['MAIL_PASSWORD'] = 'twqowggcievrehbl'  # no spaces
+app.config['MAIL_PASSWORD'] = "twqowggcievrehbl"
 app.config['MAIL_DEFAULT_SENDER'] = 'erp@zoihospitals.com'
 
 mail = Mail(app)
@@ -51,8 +54,8 @@ def create_tables():
     CREATE TABLE IF NOT EXISTS users(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE,
-        email TEXT UNIQUE,latitude real,longitude ral,address text,
-        password TEXT
+        email TEXT UNIQUE,latitude REAL,longitude REAL,address text,
+        password TEXT,phoneno TEXT,profile_pic TEXT
     )
     """)
 
@@ -73,7 +76,20 @@ def create_tables():
         price REAL,
         description TEXT,
         image TEXT,
-        quantity INTEGER
+        quantity INTEGER,category TEXT
+    )
+    """)
+	# CART TABLE
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS cart(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        product_id INTEGER,
+        product_name TEXT,
+        price REAL,
+        image TEXT,
+        quantity INTEGER,
+        status TEXT
     )
     """)
 
@@ -1050,7 +1066,7 @@ Thank you for shopping with Ravi Mart
         ))
 
     # CLEAR CART
-    cursor.execute("DELETE FROM orders WHERE user_id=?", (user_id,))
+    cursor.execute("DELETE FROM cart WHERE user_id=?", (user_id,))
 
     db.commit()
     db.close()
@@ -1212,7 +1228,7 @@ def rider_login():
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
-        cursor.execute("SELECT * FROM riders WHERE phone=?", (phone,))
+        cursor.execute("SELECT * FROM riders WHERE phone=? AND status='Approved'", (phone,))
         rider = cursor.fetchone()
 
         if rider and check_password_hash(rider["password"], password):
@@ -1521,6 +1537,6 @@ def handle_message(msg):
     emit('response', f'Server received: {msg}')
 
 if __name__ == '__main__':
-    socketio.run(app, host="0.0.0.0", port=5000)
+    socketio.run(app, host="0.0.0.0", port=5000, debug=True)
 #if __name__ == '__main__':
 #    socketio.run(app, debug=True)

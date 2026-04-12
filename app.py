@@ -677,8 +677,8 @@ def add_to_cart(product_id):
         # insert new cart item
         cursor.execute("""
         INSERT INTO cart (user_id,product_id,product_name,price,quantity,image,status)
-        VALUES (?,?,?,?,?,?,'Cart')
-        """,(user_id,product_id,product["name"],product["price"],qty,product["image"]))
+        VALUES (?,?,?,?,?,?,?)
+        """,(user_id,product_id,product["name"],product["price"],qty,product["image"],"Cart"))
 
     # reduce stock
     cursor.execute(

@@ -17,7 +17,7 @@ from werkzeug.utils import secure_filename
 
 
 app = Flask(__name__)
-app.secret_key = "secret123"
+app.secret_key = os.urandom(24)
 socketio = SocketIO(app)
 DB_NAME = "database.db"
 UPLOAD_FOLDER = "static/images"
@@ -597,7 +597,7 @@ def update_profile():
     profile_pic = None
     if file and file.filename != "":
         filename = secure_filename(file.filename)
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        profile_pic = f"profile_pics/{filename}"
         file.save(filepath)
         profile_pic = f"uploads/{filename}"
 

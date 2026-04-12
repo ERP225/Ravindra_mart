@@ -18,7 +18,7 @@ from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
-socketio = SocketIO(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
 DB_NAME = "database.db"
 UPLOAD_FOLDER = "static/images"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -405,39 +405,62 @@ def admin_logout():
 @app.route("/user_login", methods=["GET", "POST"])
 def user_login():
     if request.method == "POST":
-        username_or_email = request.form["username"]  # user enters username OR email
+        username_or_email = request.form["username"]
         password = request.form["password"]
+
         db = get_db()
         cursor = db.cursor()
+
         cursor.execute(
-            "SELECT * FROM users WHERE username=? OR email=?", 
+            "SELECT * FROM users WHERE username=? OR email=?",
             (username_or_email, username_or_email)
         )
+
         user = cursor.fetchone()
         db.close()
 
         if user and check_password_hash(user["password"], password):
+
+            # Generate OTP
             otp = str(random.randint(100000, 999999))
+
+            # Store in session
             session['otp'] = otp
             session['otp_user'] = user['id']
 
             try:
-                # Use app context to ensure Flask-Mail works
-                with app.app_context():
-                    msg = Message(
-                        "OTP for Ravi Mart Login",
-                        recipients=[user['email']]  # send to registered email
-                    )
-                    msg.body = f"Hello {user['username']}! Your OTP is {otp}"
-                    mail.send(msg)
-                flash("OTP sent to your email", "success")
-                return redirect("/verify_otp")
+                msg = Message(
+                    "OTP for Ravi Mart Login",
+                    recipients=[user['email']]
+                )
+                msg.body = f"Hello {user['username']}! Your OTP is {otp}"
+
+                mail.send(msg)
+
+                print("OTP SENT SUCCESSFULLY")
+
+                return redirect(url_for("verify_otp"))
+
             except Exception as e:
-                print("Email error:", e)
-                flash("Failed to send OTP. Check email config", "danger")
+                print("MAIL ERROR:", e)
+                flash("Error sending OTP email", "danger")
+
         else:
             flash("Invalid username or password", "danger")
+
     return render_template("user_login.html")
+@app.route("/testmail")
+def testmail():
+    try:
+        msg = Message(
+            subject="ravi mart otp testing mail",
+            recipients=["erp@zoihospitals.com"],
+            body="Flask mail working"
+        )
+        mail.send(msg)
+        return "Mail sent"
+    except Exception as e:
+        return str(e)
 #OTP LOGIN
 @app.route("/otp_login", methods=["GET", "POST"])
 def otp_login():

@@ -478,7 +478,6 @@ def verify_otp():
             session.pop("otp_user")
             session.pop("otp_expiry")
 			session.pop("user_email", None)
-
             return redirect("/user_dashboard")
 
         else:
@@ -496,7 +495,7 @@ def resend_otp():
     otp = str(random.randint(100000,999999))
 
     session["otp"] = otp
-    session["otp_expiry"] = str(datetime.datetime.now() + datetime.timedelta(minutes=5))
+    session["otp_expiry"] = (datetime.datetime.now() + datetime.timedelta(minutes=5)).isoformat()
 
     msg = Message(
         "Resend OTP",

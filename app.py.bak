@@ -1,5 +1,5 @@
 import eventlet
-eventlet.monkey_patch()  # <- MUST be first
+eventlet.monkey_patch() 
 
 from flask import Flask, render_template, request, redirect, session, flash, url_for, jsonify
 import sqlite3
@@ -443,12 +443,13 @@ def user_login():
 
             except Exception as e:
                 print("MAIL ERROR:", e)
-                flash("Error sending OTP email", "danger")
+                flash(str(e), "danger")
 
         else:
             flash("Invalid username or password", "danger")
 
     return render_template("user_login.html")
+	
 @app.route("/testmail")
 def testmail():
     try:
@@ -1559,7 +1560,7 @@ def handle_message(msg):
     print('Message received:', msg)
     emit('response', f'Server received: {msg}')
 
-#if __name__ == '__main__':
-#    socketio.run(app, host="0.0.0.0", port=5000, debug=True)
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    socketio.run(app, host="0.0.0.0", port=5000, debug=True)
+#if __name__ == '__main__':
+#    socketio.run(app, debug=True)

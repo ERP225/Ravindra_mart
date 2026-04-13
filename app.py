@@ -1,5 +1,5 @@
 import eventlet
-eventlet.monkey_patch()  # <- MUST be first
+eventlet.monkey_patch() 
 
 from flask import Flask, render_template, request, redirect, session, flash, url_for, jsonify
 import sqlite3
@@ -443,18 +443,19 @@ def user_login():
 
             except Exception as e:
                 print("MAIL ERROR:", e)
-                flash("Error sending OTP email", "danger")
+                flash(str(e), "danger")
 
         else:
             flash("Invalid username or password", "danger")
 
     return render_template("user_login.html")
+	
 @app.route("/testmail")
 def testmail():
     try:
         msg = Message(
             subject="ravi mart otp testing mail",
-            recipients=["erp@zoihospitals.com"],
+            recipients=["ravindrakesamreddy123@gmail.com"],
             body="Flask mail working"
         )
         mail.send(msg)

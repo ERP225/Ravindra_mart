@@ -455,7 +455,7 @@ def testmail():
     try:
         msg = Message(
             subject="ravi mart otp testing mail",
-            recipients=["erp@zoihospitals.com"],
+            recipients=["ravindrakesamreddy123@gmail.com"],
             body="Flask mail working"
         )
         mail.send(msg)

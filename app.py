@@ -9,7 +9,7 @@ import datetime
 from flask_socketio import SocketIO, emit
 import requests
 from werkzeug.utils import secure_filename
-
+import threading
 
 def send_mail(app, msg):
     with app.app_context():
@@ -408,6 +408,14 @@ def admin_logout():
 # ---------------- USER ROUTES ----------------
 
 #USER LOGIN
+def send_mail_async(app, msg):
+    with app.app_context():
+        try:
+            mail.send(msg)
+        except Exception as e:
+            print("MAIL ERROR:", e)
+
+
 @app.route("/user_login", methods=["GET", "POST"])
 def user_login():
 
@@ -437,13 +445,12 @@ def user_login():
                 datetime.datetime.now() + datetime.timedelta(minutes=5)
             ).isoformat()
 
-            try:
-                msg = Message(
-                    "Your Login OTP",
-                    recipients=[user["email"]]
-                )
+            msg = Message(
+                subject="Your Login OTP",
+                recipients=[user["email"]]
+            )
 
-                msg.body = f"""
+            msg.body = f"""
 Hello {user['username']}
 
 Your OTP is: {otp}
@@ -451,17 +458,13 @@ Your OTP is: {otp}
 This OTP will expire in 5 minutes.
 """
 
-                # ✅ send email directly (Flask already has context here)
-                mail.send(msg)
+            # ✅ NON-BLOCKING EMAIL SEND (IMPORTANT FIX)
+            threading.Thread(
+                target=send_mail_async,
+                args=(app, msg)
+            ).start()
 
-                return redirect(url_for("verify_otp"))
-
-            except Exception as e:
-                import traceback
-                print("MAIL ERROR:", e)
-                traceback.print_exc()
-                flash(f"Email OTP failed: {str(e)}", "danger")
-                return redirect(url_for("user_login"))
+            return redirect(url_for("verify_otp"))
 
         else:
             flash("Invalid login", "danger")

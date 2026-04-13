@@ -451,10 +451,8 @@ Your OTP is: {otp}
 This OTP will expire in 5 minutes.
 """
 
-                # ✅ background email sender (Render safe)
-                                
-                with app.app_context():
-                    mail.send(msg)
+                # ✅ send email directly (Flask already has context here)
+                mail.send(msg)
 
                 return redirect(url_for("verify_otp"))
 
@@ -463,28 +461,38 @@ This OTP will expire in 5 minutes.
                 print("MAIL ERROR:", e)
                 traceback.print_exc()
                 flash(f"Email OTP failed: {str(e)}", "danger")
+                return redirect(url_for("user_login"))
 
         else:
             flash("Invalid login", "danger")
 
     return render_template("user_login.html")
 	
-@app.route("/verify_otp", methods=["GET","POST"])
+@app.route("/verify_otp", methods=["GET", "POST"])
 def verify_otp():
+
+    if "otp" not in session:
+        flash("Session expired. Please login again.", "danger")
+        return redirect("/user_login")
 
     if request.method == "POST":
 
         entered_otp = request.form["otp"]
+
         expiry = datetime.datetime.fromisoformat(session["otp_expiry"])
 
+        # ❌ OTP expired
         if datetime.datetime.now() > expiry:
+            session.clear()
             flash("OTP expired", "danger")
             return redirect("/user_login")
 
+        # ✅ OTP match
         if entered_otp == session["otp"]:
 
-            session["user"] = session["otp_user"]   # ✅ FIXED
+            session["user"] = session["otp_user"]
 
+            # clear OTP session safely
             session.pop("otp", None)
             session.pop("otp_user", None)
             session.pop("otp_expiry", None)

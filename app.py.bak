@@ -1,5 +1,5 @@
 import eventlet
-eventlet.monkey_patch() 
+eventlet.monkey_patch()
 
 from flask import Flask, render_template, request, redirect, session, flash, url_for, jsonify
 import sqlite3
@@ -12,12 +12,17 @@ import datetime
 from flask_socketio import SocketIO, emit
 import requests
 from werkzeug.utils import secure_filename
+import threading
 
-
+def send_mail(app, msg):
+    with app.app_context():
+        mail.send(msg)
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
+
 socketio = SocketIO(app, cors_allowed_origins="*")
+
 DB_NAME = "database.db"
 UPLOAD_FOLDER = "static/images"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -27,13 +32,17 @@ os.makedirs(PROFILE_UPLOAD_FOLDER, exist_ok=True)
 
 app.config['UPLOAD_FOLDER'] = PROFILE_UPLOAD_FOLDER
 
-# FLASK MAIL CONFIG
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = os.getenv("MAIL_USERNAME")
-app.config['MAIL_PASSWORD'] = os.getenv("MAIL_PASSWORD")
-app.config['MAIL_DEFAULT_SENDER'] = os.getenv("MAIL_USERNAME")
+# MAIL CONFIG
+app.config.update(
+    MAIL_SERVER='smtp.gmail.com',
+    MAIL_PORT=587,
+    MAIL_USE_TLS=True,
+    MAIL_USE_SSL=False,
+    MAIL_USERNAME=os.environ.get("MAIL_USERNAME"),
+    MAIL_PASSWORD=os.environ.get("MAIL_PASSWORD"),
+    MAIL_DEFAULT_SENDER=os.environ.get("MAIL_USERNAME"),
+    MAIL_DEBUG=True
+)
 
 mail = Mail(app)
 
@@ -401,7 +410,7 @@ def admin_logout():
 # ---------------- USER ROUTES ----------------
 
 #USER LOGIN
-@app.route("/user_login", methods=["GET","POST"])
+@app.route("/user_login", methods=["GET", "POST"])
 def user_login():
 
     if request.method == "POST":
@@ -421,18 +430,19 @@ def user_login():
 
         if user and check_password_hash(user["password"], password):
 
-            otp = str(random.randint(100000,999999))
+            otp = str(random.randint(100000, 999999))
 
             session["otp"] = otp
             session["otp_user"] = user["id"]
-            session["user_email"] = user["email"]   # STORE EMAIL
-            session["otp_expiry"] = (datetime.datetime.now() + datetime.timedelta(minutes=5)).isoformat()
+            session["user_email"] = user["email"]
+            session["otp_expiry"] = (
+                datetime.datetime.now() + datetime.timedelta(minutes=5)
+            ).isoformat()
 
             try:
-
                 msg = Message(
                     "Your Login OTP",
-                    recipients=[user["email"]]   # SEND TO EMAIL
+                    recipients=[user["email"]]
                 )
 
                 msg.body = f"""
@@ -443,45 +453,53 @@ Your OTP is: {otp}
 This OTP will expire in 5 minutes.
 """
 
-                mail.send(msg)
+                # ✅ background email sender (Render safe)
+                def send_mail(app, msg):
+                    with app.app_context():
+                        mail.send(msg)
+
+                import threading
+                threading.Thread(
+                    target=send_mail,
+                    args=(app, msg)
+                ).start()
 
                 return redirect(url_for("verify_otp"))
 
             except Exception as e:
-
+                import traceback
                 print("MAIL ERROR:", e)
-                flash("Error sending OTP", "danger")
+                traceback.print_exc()
+                flash(f"Email OTP failed: {str(e)}", "danger")
 
         else:
             flash("Invalid login", "danger")
 
     return render_template("user_login.html")
+	
 @app.route("/verify_otp", methods=["GET","POST"])
 def verify_otp():
 
     if request.method == "POST":
 
         entered_otp = request.form["otp"]
-
         expiry = datetime.datetime.fromisoformat(session["otp_expiry"])
 
         if datetime.datetime.now() > expiry:
             flash("OTP expired", "danger")
-            return redirect(url_for("user_login"))
+            return redirect("/user_login")
 
         if entered_otp == session["otp"]:
 
-            session["user_id"] = session["otp_user"]
+            session["user"] = session["otp_user"]   # ✅ FIXED
 
-            session.pop("otp")
-            session.pop("otp_user")
-            session.pop("otp_expiry")
-            session.pop("user_email", None)
+            session.pop("otp", None)
+            session.pop("otp_user", None)
+            session.pop("otp_expiry", None)
 
             return redirect("/user_dashboard")
 
-        else:
-            flash("Invalid OTP", "danger")
+        flash("Invalid OTP", "danger")
 
     return render_template("verify_otp.html")
 @app.route("/resend_otp")

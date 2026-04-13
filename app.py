@@ -9,7 +9,7 @@ import datetime
 from flask_socketio import SocketIO, emit
 import requests
 from werkzeug.utils import secure_filename
-import threading
+
 
 def send_mail(app, msg):
     with app.app_context():
@@ -408,12 +408,15 @@ def admin_logout():
 # ---------------- USER ROUTES ----------------
 
 #USER LOGIN
+import threading
+
 def send_mail_async(app, msg):
     with app.app_context():
         try:
             mail.send(msg)
+            print("✅ MAIL SENT SUCCESSFULLY")
         except Exception as e:
-            print("MAIL ERROR:", e)
+            print("❌ MAIL ERROR:", e)
 
 
 @app.route("/user_login", methods=["GET", "POST"])
@@ -445,6 +448,10 @@ def user_login():
                 datetime.datetime.now() + datetime.timedelta(minutes=5)
             ).isoformat()
 
+            # ✅ LOG FIRST (IMPORTANT)
+            print("SENDING OTP TO:", user["email"])
+            print("OTP:", otp)
+
             msg = Message(
                 subject="Your Login OTP",
                 recipients=[user["email"]]
@@ -458,7 +465,7 @@ Your OTP is: {otp}
 This OTP will expire in 5 minutes.
 """
 
-            # ✅ NON-BLOCKING EMAIL SEND (IMPORTANT FIX)
+            # ✅ NON-BLOCKING EMAIL (Render safe)
             threading.Thread(
                 target=send_mail_async,
                 args=(app, msg)

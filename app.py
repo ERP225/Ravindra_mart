@@ -1,5 +1,5 @@
 import eventlet
-eventlet.monkey_patch() 
+eventlet.monkey_patch()
 
 from flask import Flask, render_template, request, redirect, session, flash, url_for, jsonify
 import sqlite3
@@ -13,11 +13,11 @@ from flask_socketio import SocketIO, emit
 import requests
 from werkzeug.utils import secure_filename
 
-
-
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
+
 socketio = SocketIO(app, cors_allowed_origins="*")
+
 DB_NAME = "database.db"
 UPLOAD_FOLDER = "static/images"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -27,7 +27,7 @@ os.makedirs(PROFILE_UPLOAD_FOLDER, exist_ok=True)
 
 app.config['UPLOAD_FOLDER'] = PROFILE_UPLOAD_FOLDER
 
-# FLASK MAIL CONFIG
+# MAIL CONFIG
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
@@ -456,32 +456,30 @@ This OTP will expire in 5 minutes.
             flash("Invalid login", "danger")
 
     return render_template("user_login.html")
+	
 @app.route("/verify_otp", methods=["GET","POST"])
 def verify_otp():
 
     if request.method == "POST":
 
         entered_otp = request.form["otp"]
-
         expiry = datetime.datetime.fromisoformat(session["otp_expiry"])
 
         if datetime.datetime.now() > expiry:
             flash("OTP expired", "danger")
-            return redirect(url_for("user_login"))
+            return redirect("/user_login")
 
         if entered_otp == session["otp"]:
 
-            session["user_id"] = session["otp_user"]
+            session["user"] = session["otp_user"]   # ✅ FIXED
 
-            session.pop("otp")
-            session.pop("otp_user")
-            session.pop("otp_expiry")
-            session.pop("user_email", None)
+            session.pop("otp", None)
+            session.pop("otp_user", None)
+            session.pop("otp_expiry", None)
 
             return redirect("/user_dashboard")
 
-        else:
-            flash("Invalid OTP", "danger")
+        flash("Invalid OTP", "danger")
 
     return render_template("verify_otp.html")
 @app.route("/resend_otp")

@@ -466,8 +466,7 @@ def verify_otp():
         expiry = datetime.datetime.fromisoformat(session["otp_expiry"])
 
         if datetime.datetime.now() > expiry:
-
-            flash("OTP expired","danger")
+            flash("OTP expired", "danger")
             return redirect(url_for("user_login"))
 
         if entered_otp == session["otp"]:
@@ -477,12 +476,12 @@ def verify_otp():
             session.pop("otp")
             session.pop("otp_user")
             session.pop("otp_expiry")
-			session.pop("user_email", None)
+            session.pop("user_email", None)
+
             return redirect("/user_dashboard")
 
         else:
-
-            flash("Invalid OTP","danger")
+            flash("Invalid OTP", "danger")
 
     return render_template("verify_otp.html")
 @app.route("/resend_otp")

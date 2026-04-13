@@ -20,7 +20,8 @@ def send_mail(app, msg):
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
-
+print("MAIL USER:", os.environ.get("MAIL_USERNAME"))
+print("MAIL PASS:", os.environ.get("MAIL_PASSWORD"))
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 DB_NAME = "database.db"

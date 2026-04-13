@@ -8,10 +8,9 @@ import uuid
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_mail import Mail, Message
 import random
+import datetime
 from flask_socketio import SocketIO, emit
 import requests
-
-import os
 from werkzeug.utils import secure_filename
 
 
@@ -34,7 +33,7 @@ app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USERNAME'] = os.getenv("MAIL_USERNAME")
 app.config['MAIL_PASSWORD'] = os.getenv("MAIL_PASSWORD")
-app.config['MAIL_DEFAULT_SENDER'] = 'erp@zoihospitals.com'
+app.config['MAIL_DEFAULT_SENDER'] = os.getenv("MAIL_USERNAME")
 
 mail = Mail(app)
 
@@ -402,10 +401,12 @@ def admin_logout():
 # ---------------- USER ROUTES ----------------
 
 #USER LOGIN
-@app.route("/user_login", methods=["GET", "POST"])
+@app.route("/user_login", methods=["GET","POST"])
 def user_login():
+
     if request.method == "POST":
-        username_or_email = request.form["username"]
+
+        username = request.form["username"]
         password = request.form["password"]
 
         db = get_db()
@@ -413,102 +414,101 @@ def user_login():
 
         cursor.execute(
             "SELECT * FROM users WHERE username=? OR email=?",
-            (username_or_email, username_or_email)
+            (username, username)
         )
 
         user = cursor.fetchone()
-        db.close()
 
         if user and check_password_hash(user["password"], password):
 
-            # Generate OTP
-            otp = str(random.randint(100000, 999999))
+            otp = str(random.randint(100000,999999))
 
-            # Store in session
-            session['otp'] = otp
-            session['otp_user'] = user['id']
+            session["otp"] = otp
+            session["otp_user"] = user["id"]
+            session["user_email"] = user["email"]   # STORE EMAIL
+            session["otp_expiry"] = (datetime.datetime.now() + datetime.timedelta(minutes=5)).isoformat()
 
             try:
+
                 msg = Message(
-                    "OTP for Ravi Mart Login",
-                    recipients=[user['email']]
+                    "Your Login OTP",
+                    recipients=[user["email"]]   # SEND TO EMAIL
                 )
-                msg.body = f"Hello {user['username']}! Your OTP is {otp}"
+
+                msg.body = f"""
+Hello {user['username']}
+
+Your OTP is: {otp}
+
+This OTP will expire in 5 minutes.
+"""
 
                 mail.send(msg)
-
-                print("OTP SENT SUCCESSFULLY")
 
                 return redirect(url_for("verify_otp"))
 
             except Exception as e:
+
                 print("MAIL ERROR:", e)
-                flash(str(e), "danger")
+                flash("Error sending OTP", "danger")
 
         else:
-            flash("Invalid username or password", "danger")
+            flash("Invalid login", "danger")
 
     return render_template("user_login.html")
-	
-@app.route("/testmail")
-def testmail():
-    try:
-        msg = Message(
-            subject="ravi mart otp testing mail",
-            recipients=["ravindrakesamreddy123@gmail.com"],
-            body="Flask mail working"
-        )
-        mail.send(msg)
-        return "Mail sent"
-    except Exception as e:
-        return str(e)
-#OTP LOGIN
-@app.route("/otp_login", methods=["GET", "POST"])
-def otp_login():
-    if request.method == "POST":
-        username_or_email = request.form["username"]
-        db = get_db()
-        cursor = db.cursor()
-        cursor.execute(
-            "SELECT * FROM users WHERE username=? OR email=?", 
-            (username_or_email, username_or_email)
-        )
-        user = cursor.fetchone()
-        db.close()
-        if user:
-            otp = str(random.randint(100000, 999999))
-            session['otp'] = otp
-            session['otp_user'] = user['id']
-            try:
-                with app.app_context():
-                    msg = Message(
-                        "OTP for Ravi Mart Login",
-                        recipients=[user['email']]
-                    )
-                    msg.body = f"Hello {user['username']}! Your OTP is {otp}"
-                    mail.send(msg)
-                flash("OTP sent to your email", "success")
-                return redirect("/verify_otp")
-            except Exception as e:
-                print("Email error:", e)
-                flash("Failed to send OTP. Check email config", "danger")
-        else:
-            flash("User not found", "danger")
-    return render_template("otp_login.html")
-#VERIFY OTP
-@app.route("/verify_otp", methods=["GET", "POST"])
+@app.route("/verify_otp", methods=["GET","POST"])
 def verify_otp():
+
     if request.method == "POST":
+
         entered_otp = request.form["otp"]
-        if 'otp' in session and entered_otp == session['otp']:
-            session["user"] = session['otp_user']
-            session.pop('otp')
-            session.pop('otp_user')
-            flash("OTP verified! Logged in successfully", "success")
+
+        expiry = datetime.datetime.fromisoformat(session["otp_expiry"])
+
+        if datetime.datetime.now() > expiry:
+
+            flash("OTP expired","danger")
+            return redirect(url_for("user_login"))
+
+        if entered_otp == session["otp"]:
+
+            session["user_id"] = session["otp_user"]
+
+            session.pop("otp")
+            session.pop("otp_user")
+            session.pop("otp_expiry")
+			session.pop("user_email", None)
             return redirect("/user_dashboard")
+
         else:
-            flash("Invalid OTP", "danger")
+
+            flash("Invalid OTP","danger")
+
     return render_template("verify_otp.html")
+@app.route("/resend_otp")
+def resend_otp():
+
+    if "user_email" not in session:
+        flash("Session expired. Please login again.", "danger")
+        return redirect(url_for("user_login"))
+
+    otp = str(random.randint(100000,999999))
+
+    session["otp"] = otp
+    session["otp_expiry"] = (datetime.datetime.now() + datetime.timedelta(minutes=5)).isoformat()
+
+    msg = Message(
+        "Resend OTP",
+        recipients=[session["user_email"]]
+    )
+
+    msg.body = f"Your new OTP is {otp}"
+
+    mail.send(msg)
+
+    flash("OTP resent", "success")
+
+    return redirect(url_for("verify_otp"))
 
 # ---------------- USER DASHBOARD ----------------
 @app.route("/user_dashboard")

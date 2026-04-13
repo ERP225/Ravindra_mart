@@ -1,6 +1,3 @@
-import eventlet
-eventlet.monkey_patch()
-
 from flask import Flask, render_template, request, redirect, session, flash, url_for, jsonify
 import sqlite3
 import os
@@ -22,7 +19,7 @@ app = Flask(__name__)
 app.secret_key = os.urandom(24)
 print("MAIL USER:", os.environ.get("MAIL_USERNAME"))
 print("MAIL PASS:", os.environ.get("MAIL_PASSWORD"))
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
 DB_NAME = "database.db"
 UPLOAD_FOLDER = "static/images"

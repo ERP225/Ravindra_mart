@@ -3,13 +3,16 @@ import sqlite3
 import os
 import uuid
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_mail import Mail, Message
+#from flask_mail import Mail, Message
 import random
 import datetime
 from flask_socketio import SocketIO, emit
 import requests
 from werkzeug.utils import secure_filename
-import threading
+import resend
+
+resend.api_key = "re_UF144ii3_LP8KtrxyMzCjuCtppzpavdZs"
+
 
 def send_mail(app, msg):
     with app.app_context():
@@ -30,19 +33,7 @@ os.makedirs(PROFILE_UPLOAD_FOLDER, exist_ok=True)
 
 app.config['UPLOAD_FOLDER'] = PROFILE_UPLOAD_FOLDER
 
-# MAIL CONFIG
-app.config.update(
-    MAIL_SERVER='smtp.gmail.com',
-    MAIL_PORT=587,
-    MAIL_USE_TLS=True,
-    MAIL_USE_SSL=False,
-    MAIL_USERNAME=os.environ.get("MAIL_USERNAME"),
-    MAIL_PASSWORD=os.environ.get("MAIL_PASSWORD"),
-    MAIL_DEFAULT_SENDER=os.environ.get("MAIL_USERNAME"),
-    MAIL_DEBUG=True
-)
 
-mail = Mail(app)
 
 # DATABASE CONNECTION
 def get_db():
@@ -408,12 +399,22 @@ def admin_logout():
 # ---------------- USER ROUTES ----------------
 
 #USER LOGIN
-def send_mail_async(app, msg):
-    with app.app_context():
-        try:
-            mail.send(msg)
-        except Exception as e:
-            print("MAIL ERROR:", e)
+import threading
+
+def send_email(to_email, subject, body):
+
+    try:
+        resend.Emails.send({
+            "from": "OTP <onboarding@resend.dev>",
+            "to": [to_email],
+            "subject": subject,
+            "text": body
+        })
+
+        print("Email sent successfully")
+
+    except Exception as e:
+        print("Email error:", e)
 
 
 @app.route("/user_login", methods=["GET", "POST"])
@@ -445,26 +446,20 @@ def user_login():
                 datetime.datetime.now() + datetime.timedelta(minutes=5)
             ).isoformat()
 
-            msg = Message(
-                subject="Your Login OTP",
-                recipients=[user["email"]]
-            )
-			print("SENDING OTP TO:",user["email"])
-			print("OTP:",otp)
+            print("SENDING OTP TO:", user["email"])
+            print("OTP:", otp)
 
-            msg.body = f"""
+            send_email(
+                user["email"],
+                "Your Login OTP",
+                f"""
 Hello {user['username']}
 
 Your OTP is: {otp}
 
 This OTP will expire in 5 minutes.
 """
-
-            # ✅ NON-BLOCKING EMAIL SEND (IMPORTANT FIX)
-            threading.Thread(
-                target=send_mail_async,
-                args=(app, msg)
-            ).start()
+            )
 
             return redirect(url_for("verify_otp"))
 
@@ -486,18 +481,15 @@ def verify_otp():
 
         expiry = datetime.datetime.fromisoformat(session["otp_expiry"])
 
-        # ❌ OTP expired
         if datetime.datetime.now() > expiry:
             session.clear()
             flash("OTP expired", "danger")
             return redirect("/user_login")
 
-        # ✅ OTP match
         if entered_otp == session["otp"]:
 
             session["user"] = session["otp_user"]
 
-            # clear OTP session safely
             session.pop("otp", None)
             session.pop("otp_user", None)
             session.pop("otp_expiry", None)
@@ -514,21 +506,27 @@ def resend_otp():
         flash("Session expired. Please login again.", "danger")
         return redirect(url_for("user_login"))
 
-    otp = str(random.randint(100000,999999))
+    otp = str(random.randint(100000, 999999))
 
     session["otp"] = otp
-    session["otp_expiry"] = (datetime.datetime.now() + datetime.timedelta(minutes=5)).isoformat()
+    session["otp_expiry"] = (
+        datetime.datetime.now() + datetime.timedelta(minutes=5)
+    ).isoformat()
 
-    msg = Message(
+    print("RESENDING OTP TO:", session["user_email"])
+    print("NEW OTP:", otp)
+
+    send_email(
+        session["user_email"],
         "Resend OTP",
-        recipients=[session["user_email"]]
+        f"""
+Your new OTP is: {otp}
+
+This OTP will expire in 5 minutes.
+"""
     )
 
-    msg.body = f"Your new OTP is {otp}"
-
-    mail.send(msg)
-
-    flash("OTP resent", "success")
+    flash("OTP resent successfully", "success")
 
     return redirect(url_for("verify_otp"))
 
@@ -1022,31 +1020,26 @@ def payment():
         cursor.execute("SELECT email, username FROM users WHERE id=?", (user_id,))
         user = cursor.fetchone()
 
+        # ✅ SEND EMAIL USING RESEND
         if user and user["email"]:
-            try:
-                with app.app_context():
 
-                    msg = Message(
-                        subject="Your Delivery OTP - Ravi Mart",
-                        recipients=[user["email"]]
-                    )
-
-                    msg.body = f"""
+            send_email(
+                user["email"],
+                "Your Delivery OTP - Ravi Mart",
+                f"""
 Hello {user['username']}
 
-Your Delivery OTP : {delivery_otp}
+Your Delivery OTP: {delivery_otp}
 
-Order Number : {order_number}
+Order Number: {order_number}
 
-Thank you for shopping with Ravi Mart
+This OTP will be required when the rider delivers your order.
+
+Thank you for shopping with Ravi Mart.
 """
+            )
 
-                    mail.send(msg)
-
-                    flash("Delivery OTP sent to your email", "success")
-
-            except Exception as e:
-                print("Email error:", e)
+            flash("Delivery OTP sent to your email", "success")
 
         return render_template(
             "payment.html",
@@ -1134,18 +1127,10 @@ def payment_success(order_number=None):
     if not order_number:
         return redirect("/user_dashboard")
 
-    user_id = session["user"]
-    address_id = session.get("selected_address")
-
     db = get_db()
     cursor = db.cursor()
 
-    # ✅ Clear cart (mark items ordered)
-    cursor.execute("DELETE FROM cart WHERE user_id=?", (user_id,))
-
-    db.commit()
-
-    # ✅ Fetch order details
+    # Fetch order details
     cursor.execute("""
         SELECT oh.*, p.name, p.image
         FROM order_history oh
@@ -1157,7 +1142,7 @@ def payment_success(order_number=None):
 
     db.close()
 
-    # Clear session address
+    # clear address session
     session.pop("selected_address", None)
 
     if not order_details:
@@ -1168,7 +1153,6 @@ def payment_success(order_number=None):
         order_number=order_number,
         order=order_details
     )
-
 # ---------------- MY ORDERS ----------------
 
 	

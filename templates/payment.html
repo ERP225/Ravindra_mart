@@ -1,64 +1,188 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Payment</title>
-    <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            text-align: center; 
-            margin-top: 50px; 
-            background: #f5f7fb; 
-        }
-        button { 
-            padding: 12px 25px; 
-            background: #27ae60; 
-            color: white; 
-            border: none; 
-            border-radius: 8px;
-            font-size: 16px;
-            cursor: pointer; 
-        }
-        button:hover {
-            background: #2ecc71;
-        }
-        .container {
-            background: #fff;
-            display: inline-block;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Ravi Mart Payment</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:'Poppins',sans-serif;
+}
+
+body{
+background: linear-gradient(120deg,#141e30,#243b55);
+min-height:100vh;
+display:flex;
+align-items:center;
+justify-content:center;
+color:white;
+}
+
+.payment-card{
+width:850px;
+background:rgba(255,255,255,0.06);
+backdrop-filter:blur(12px);
+border-radius:18px;
+padding:35px;
+box-shadow:0 10px 40px rgba(0,0,0,0.4);
+display:flex;
+gap:30px;
+}
+
+.left{
+flex:1;
+}
+
+.right{
+flex:1;
+background:rgba(255,255,255,0.08);
+padding:20px;
+border-radius:12px;
+}
+
+h2{
+margin-bottom:15px;
+}
+
+.order-info{
+margin-bottom:20px;
+font-size:14px;
+}
+
+.items{
+margin-top:10px;
+}
+
+.item{
+display:flex;
+justify-content:space-between;
+padding:10px;
+border-bottom:1px solid rgba(255,255,255,0.1);
+}
+
+.total{
+margin-top:20px;
+font-size:20px;
+font-weight:600;
+color:#00ffc8;
+}
+
+.pay-btn{
+width:100%;
+padding:14px;
+margin-top:20px;
+background:#00ffc8;
+border:none;
+border-radius:10px;
+font-size:16px;
+font-weight:600;
+cursor:pointer;
+transition:.3s;
+}
+
+.pay-btn:hover{
+background:#00d1a3;
+transform:scale(1.03);
+}
+
+.methods{
+margin-top:20px;
+}
+
+.method{
+background:rgba(255,255,255,0.1);
+padding:10px;
+border-radius:8px;
+margin-bottom:10px;
+cursor:pointer;
+}
+
+.method:hover{
+background:rgba(255,255,255,0.2);
+}
+
+.logo{
+font-size:22px;
+font-weight:600;
+color:#00ffc8;
+margin-bottom:20px;
+}
+
+</style>
 </head>
+
 <body>
 
-<div class="container">
-   
-<h3>💳 Payment Page</h3>
+<div class="payment-card">
 
+<div class="left">
+
+<div class="logo">🛒 Ravi Mart</div>
+
+<h2>Payment</h2>
+
+<div class="order-info">
 <p><strong>Order Number:</strong> {{ order_number }}</p>
-<p><strong>Delivery OTP:</strong> {{ delivery_otp }}</p> <!-- Add this line -->
+<p><strong>Delivery OTP:</strong> {{ delivery_otp }}</p>
+</div>
 
-<h4>Cart Items</h4>
-<ul>
+<h3>Cart Items</h3>
+
+<div class="items">
+
 {% for item in items %}
-    <li>{{ item.name }} × {{ item.quantity }} = ₹{{ item.price * item.quantity }}</li>
+<div class="item">
+<span>{{ item.name }} × {{ item.quantity }}</span>
+<span>₹{{ item.price * item.quantity }}</span>
+</div>
 {% endfor %}
-</ul>
 
-<p><strong>Total:</strong> ₹{{ total }}</p>
+</div>
+
+<div class="total">
+Total : ₹{{ total }}
+</div>
 
 <form method="POST">
-    <button type="submit">Pay Now</button>
+<button class="pay-btn">Pay Now</button>
 </form>
 
 </div>
 
+
+<div class="right">
+
+<h3>Select Payment Method</h3>
+
+<div class="methods">
+
+<div class="method">💳 Credit / Debit Card</div>
+<div class="method">📱 UPI Payment</div>
+<div class="method">🏦 Net Banking</div>
+<div class="method">💵 Cash on Delivery</div>
+
+</div>
+
+</div>
+
+</div>
+
 <script>
-const payButton = document.querySelector("button");
-payButton.addEventListener("click", function(){
-    alert("Payment Successful ✅");
+
+const btn = document.querySelector(".pay-btn");
+
+btn.addEventListener("click", function(){
+alert("Payment Successful ✅");
 });
+
 </script>
 
 </body>

@@ -162,7 +162,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
 attribution:'© OpenStreetMap'
 }).addTo(map)
 
-marker = L.marker(defaultLocation,{draggable:true}).addTo(map)
+marker=L.marker(defaultLocation,{draggable:true}).addTo(map)
 
 updateCoordinates(defaultLocation)
 
@@ -205,46 +205,25 @@ return true
 
 function useMyLocation(){
 
-if(!navigator.geolocation){
-alert("Geolocation is not supported by your browser.")
-return
-}
+if(navigator.geolocation){
 
-navigator.geolocation.getCurrentPosition(
+navigator.geolocation.getCurrentPosition(pos=>{
 
-function(position){
+const coords=[pos.coords.latitude,pos.coords.longitude]
 
-const lat = position.coords.latitude
-const lng = position.coords.longitude
-
-const coords = [lat, lng]
-
-map.setView(coords, 16)
+map.setView(coords,15)
 
 marker.setLatLng(coords)
 
 updateCoordinates(coords)
 
-},
+})
 
-function(error){
+}else{
 
-if(error.code === 1){
-alert("Location permission denied. Please allow location access.")
-}
-else if(error.code === 2){
-alert("Location unavailable.")
-}
-else if(error.code === 3){
-alert("Location request timed out.")
-}
-else{
-alert("Unable to get location.")
-}
+alert("Geolocation not supported")
 
 }
-
-)
 
 }
 

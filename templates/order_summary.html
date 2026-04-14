@@ -1,74 +1,259 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Order Summary - Fresh Mart</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Order Summary — Ravi Mart</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    <!-- Bootstrap CDN -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  html, body {
+    min-height: 100%;
+    font-family: 'Inter', sans-serif;
+    background: #0a0a0a;
+    color: #f0ede6;
+    padding: 2.5rem 1rem;
+  }
 
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f8f9fa;
-            padding: 20px;
-        }
-        .summary-card {
-            background: #fff;
-            padding: 30px;
-            border-radius: 10px;
-            max-width: 900px;
-            margin: 30px auto;
-            box-shadow: 0 0 15px rgba(0,0,0,0.1);
-        }
-        table th {
-            background-color: #28a745;
-            color: white;
-        }
-        .btn-home {
-            margin-top: 20px;
-        }
-    </style>
+  .page { max-width: 680px; margin: 0 auto; }
+
+  /* ── SUCCESS BANNER ── */
+  .success-banner {
+    background: #0f2d1a;
+    border: 1px solid #1a5c2e;
+    border-radius: 16px;
+    padding: 2rem;
+    text-align: center;
+    margin-bottom: 1.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .success-banner::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, #16a34a, #4ade80, #16a34a);
+  }
+  .check-ring {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: #16a34a;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 1rem;
+  }
+  .check-ring svg { width: 24px; height: 24px; stroke: #fff; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+  .banner-title { font-size: 20px; font-weight: 700; color: #f0fdf4; margin-bottom: 4px; }
+  .banner-sub { font-size: 13px; color: rgba(240,253,244,0.5); }
+
+  /* ── ORDER META ── */
+  .order-meta {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
+    margin-bottom: 1.5rem;
+  }
+  .meta-tile {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 12px;
+    padding: 14px 16px; text-align: center;
+  }
+  .meta-label { font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.07em; color: rgba(240,237,230,0.3); margin-bottom: 6px; }
+  .meta-value { font-size: 14px; font-weight: 600; color: #f0ede6; }
+
+  /* ── DELIVERY CARD ── */
+  .delivery-card {
+    background: rgba(59,130,246,0.06);
+    border: 1px solid rgba(59,130,246,0.2);
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 1.5rem;
+  }
+  .delivery-icon { width: 36px; height: 36px; border-radius: 8px; background: rgba(59,130,246,0.15); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .delivery-icon svg { width: 16px; height: 16px; stroke: #60a5fa; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .delivery-text { flex: 1; }
+  .delivery-title { font-size: 13px; font-weight: 500; color: #93c5fd; }
+  .delivery-sub { font-size: 11px; color: rgba(147,197,253,0.5); margin-top: 2px; }
+  .delivery-eta { font-size: 13px; font-weight: 600; color: #60a5fa; white-space: nowrap; }
+
+  /* ── RECEIPT ── */
+  .receipt {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+  }
+  .receipt-header {
+    padding: 14px 20px;
+    background: rgba(255,255,255,0.04);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    display: grid; grid-template-columns: 1fr 90px 60px 90px; gap: 8px;
+  }
+  .col-head { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(240,237,230,0.3); }
+  .col-head:not(:first-child) { text-align: right; }
+
+  .line-item {
+    padding: 14px 20px;
+    display: grid; grid-template-columns: 1fr 90px 60px 90px; gap: 8px;
+    align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    transition: background 0.1s;
+  }
+  .line-item:hover { background: rgba(255,255,255,0.02); }
+  .line-item:last-child { border-bottom: none; }
+  .item-name { font-size: 13px; font-weight: 500; color: #f0ede6; }
+  .item-price, .item-qty, .item-total { font-size: 13px; color: rgba(240,237,230,0.6); text-align: right; }
+  .item-total { color: #f0ede6; font-weight: 500; }
+
+  .divider { height: 1px; background: rgba(255,255,255,0.06); margin: 0 20px; }
+
+  .totals { padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; }
+  .total-row { display: flex; justify-content: space-between; align-items: center; }
+  .total-label { font-size: 12px; color: rgba(240,237,230,0.4); }
+  .total-val { font-size: 13px; color: rgba(240,237,230,0.7); }
+  .grand-row {
+    display: flex; justify-content: space-between; align-items: center;
+    background: rgba(22,163,74,0.12);
+    border: 1px solid rgba(22,163,74,0.25);
+    border-radius: 10px;
+    padding: 12px 16px; margin-top: 4px;
+  }
+  .grand-label { font-size: 13px; font-weight: 600; color: #4ade80; }
+  .grand-val { font-size: 18px; font-weight: 700; color: #4ade80; }
+
+  /* ── ACTIONS ── */
+  .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1.5rem; }
+  .btn-primary {
+    background: #16a34a; border: none; border-radius: 12px;
+    padding: 14px; font-size: 14px; font-weight: 600; color: #fff;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: background 0.15s, transform 0.1s; text-decoration: none;
+  }
+  .btn-primary:hover { background: #15803d; transform: translateY(-1px); }
+  .btn-secondary {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 14px; font-size: 14px; font-weight: 500;
+    color: rgba(240,237,230,0.7); cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: background 0.15s; text-decoration: none;
+  }
+  .btn-secondary:hover { background: rgba(255,255,255,0.07); }
+  .btn-icon { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* ── FOOTER NOTE ── */
+  .footer-note { text-align: center; font-size: 11px; color: rgba(240,237,230,0.2); line-height: 1.7; }
+
+  @media (max-width: 480px) {
+    .order-meta { grid-template-columns: 1fr 1fr; }
+    .actions { grid-template-columns: 1fr; }
+    .receipt-header, .line-item { grid-template-columns: 1fr 70px 50px 80px; }
+  }
+</style>
 </head>
 <body>
+<div class="page">
 
-<div class="summary-card">
-    <h2 class="text-success text-center">🎉 Order Placed Successfully!</h2>
-    <p class="text-center"><b>Order Number:</b> {{ order_number }}</p>
+  <!-- SUCCESS BANNER -->
+  <div class="success-banner">
+    <div class="check-ring">
+      <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <div class="banner-title">Order placed successfully!</div>
+    <div class="banner-sub">Thank you for shopping with Ravi Mart</div>
+  </div>
 
-    <div class="table-responsive">
-        <table class="table table-bordered text-center">
-            <thead>
-                <tr>
-                    <th>Product</th>
-                    <th>Price (₹)</th>
-                    <th>Qty</th>
-                    <th>Total (₹)</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% set grand_total = 0 %}
-                {% for item in items %}
-                <tr>
-                    <td>{{ item.name }}</td>
-                    <td>{{ "%.2f"|format(item.price) }}</td>
-                    <td>{{ item.quantity }}</td>
-                    <td>{{ "%.2f"|format(item.price * item.quantity) }}</td>
-                </tr>
-                {% set grand_total = grand_total + (item.price * item.quantity) %}
-                {% endfor %}
-                <tr>
-                    <td colspan="3" class="text-end"><b>Grand Total</b></td>
-                    <td><b>₹{{ "%.2f"|format(grand_total) }}</b></td>
-                </tr>
-            </tbody>
-        </table>
+  <!-- META TILES -->
+  <div class="order-meta">
+    <div class="meta-tile">
+      <div class="meta-label">Order no.</div>
+      <div class="meta-value">{{ order_number }}</div>
+    </div>
+    <div class="meta-tile">
+      <div class="meta-label">Date</div>
+      <div class="meta-value" id="odate">—</div>
+    </div>
+    <div class="meta-tile">
+      <div class="meta-label">Status</div>
+      <div class="meta-value" style="color:#4ade80">Confirmed</div>
+    </div>
+  </div>
+
+  <!-- DELIVERY CARD -->
+  <div class="delivery-card">
+    <div class="delivery-icon">
+      <svg viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+    </div>
+    <div class="delivery-text">
+      <div class="delivery-title">Your order is on its way</div>
+      <div class="delivery-sub">Estimated delivery window</div>
+    </div>
+    <div class="delivery-eta">Within 2 hrs</div>
+  </div>
+
+  <!-- RECEIPT TABLE -->
+  <div class="receipt">
+    <div class="receipt-header">
+      <div class="col-head">Item</div>
+      <div class="col-head" style="text-align:right">Price</div>
+      <div class="col-head" style="text-align:right">Qty</div>
+      <div class="col-head" style="text-align:right">Total</div>
     </div>
 
-    <div class="text-center">
-        <a href="/user_dashboard" class="btn btn-success btn-lg btn-home">Back to Dashboard</a>
+    {% set grand_total = 0 %}
+    {% for item in items %}
+    <div class="line-item">
+      <div class="item-name">{{ item.name }}</div>
+      <div class="item-price">₹{{ "%.2f"|format(item.price) }}</div>
+      <div class="item-qty">{{ item.quantity }}</div>
+      <div class="item-total">₹{{ "%.2f"|format(item.price * item.quantity) }}</div>
     </div>
+    {% set grand_total = grand_total + (item.price * item.quantity) %}
+    {% endfor %}
+
+    <div class="divider"></div>
+    <div class="totals">
+      <div class="total-row">
+        <span class="total-label">Subtotal</span>
+        <span class="total-val">₹{{ "%.2f"|format(grand_total) }}</span>
+      </div>
+      <div class="total-row">
+        <span class="total-label">Delivery fee</span>
+        <span class="total-val" style="color:#4ade80">Free</span>
+      </div>
+      <div class="total-row">
+        <span class="total-label">Taxes & charges</span>
+        <span class="total-val">Included</span>
+      </div>
+      <div class="grand-row">
+        <span class="grand-label">Grand total</span>
+        <span class="grand-val">₹{{ "%.2f"|format(grand_total) }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ACTIONS -->
+  <div class="actions">
+    <a href="/user_dashboard" class="btn-primary">
+      <svg class="btn-icon" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Back to dashboard
+    </a>
+    <a href="/track_order" class="btn-secondary">
+      <svg class="btn-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Track order
+    </a>
+  </div>
+
+  <div class="footer-note">
+    A confirmation has been sent to your registered email.<br>
+    Need help? Contact support 24/7 via the app.
+  </div>
+
 </div>
-
+<script>
+  document.getElementById('odate').textContent = new Date().toLocaleDateString('en-IN', {
+    day: 'numeric', month: 'short', year: 'numeric'
+  });
+</script>
 </body>
 </html>

@@ -646,7 +646,8 @@ body {
 .card:nth-child(4) { animation-delay: 0.25s; }
 .card:nth-child(5) { animation-delay: 0.3s; }
 .card:nth-child(6) { animation-delay: 0.35s; }
-
+<<<<<<< HEAD
+=======
 .nav {
     background: rgba(10,10,10,0.92);
     backdrop-filter: blur(20px);
@@ -676,7 +677,7 @@ body {
     border: 1px solid rgba(245,158,11,0.3);
     color: #f59e0b;
   }
-
+>>>>>>> 28ad25c (new mail)
 </style>
 </head>
 <body>
@@ -758,9 +759,9 @@ body {
 
   <!-- TOPBAR -->
   <div class="topbar">
-
+<<<<<<< HEAD
     <div class="logo">🛍 Ravi Mart</div>
-
+=======
     <nav class="nav">
   <div class="brand">
     <div class="brand-logo">
@@ -773,6 +774,7 @@ body {
     <div class="nav-pill">Est. 2026</div>
   </div>
 </nav>
+>>>>>>> 28ad25c (new mail)
 
     <form class="search-form" method="GET" action="/user_dashboard">
       <input type="text"
@@ -789,9 +791,10 @@ body {
         <div class="cart-chip cart-badge-top">{{ cart_count }}</div>
       </a>
     </div>
-
+<<<<<<< HEAD
+=======
 	
-
+>>>>>>> 28ad25c (new mail)
   </div>
 
   <!-- CONTENT -->
@@ -850,9 +853,9 @@ body {
 </div>
 
 <!-- FLOATING CART -->
-
+<<<<<<< HEAD
 <div id="floating-cart" onclick="window.location.href='/cart'">
-
+=======
 <!--<div id="floating-cart" onclick="window.location.href='/cart'">
 >>>>>>> 28ad25c (new mail)
   <i class="fa fa-shopping-cart"></i>

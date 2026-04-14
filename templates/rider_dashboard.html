@@ -2,323 +2,315 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Rider Dashboard</title>
+<title>Rider Dashboard + Earnings</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
 <style>
-#map{
-    height:400px;
-    width:100%;
-    margin-bottom:20px;
-}
-</style>
 
+/* =========================
+   GLOBAL
+========================= */
+body{
+margin:0;
+font-family:Arial;
+background:#0a0a0a;
+color:#fff;
+}
+
+/* =========================
+   DASHBOARD HEADER
+========================= */
+.header{
+padding:15px;
+display:flex;
+justify-content:space-between;
+background:#111;
+border-bottom:1px solid #222;
+}
+
+.status-btn{
+padding:8px 12px;
+border:none;
+border-radius:6px;
+cursor:pointer;
+}
+
+.online{background:#22c55e;}
+.offline{background:#ef4444;color:#fff;}
+
+/* =========================
+   DASHBOARD LAYOUT
+========================= */
+.container{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:20px;
+padding:20px;
+}
+
+#map{
+height:500px;
+border-radius:12px;
+}
+
+.card{
+background:#111;
+padding:12px;
+margin-bottom:10px;
+border-radius:10px;
+border:1px solid #222;
+}
+
+.badge{
+padding:4px 8px;
+border-radius:6px;
+font-size:12px;
+}
+
+.Assigned{background:#f59e0b;}
+.Accepted{background:#3b82f6;}
+.Picked{background:#a855f7;}
+
+/* =========================
+   EARNINGS PAGE (FULL CSS)
+========================= */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%;font-family:'Inter',sans-serif;background:#0a0a0a;color:#f0ede6}
+
+.nav{
+  background:rgba(10,10,10,0.92);
+  backdrop-filter:blur(20px);
+  border-bottom:1px solid rgba(255,255,255,0.06);
+  padding:0 2rem;height:60px;
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:100;
+}
+
+.brand{display:flex;align-items:center;gap:12px}
+.brand-name{font-size:16px;font-weight:600}
+.brand-role{font-size:10px;background:rgba(245,158,11,0.12);color:#f59e0b;padding:2px 8px;border-radius:99px}
+
+.nav-back{color:#aaa;text-decoration:none;font-size:13px}
+
+.page{max-width:860px;margin:0 auto;padding:2rem 1rem}
+
+.hero{
+  background:rgba(22,163,74,0.06);
+  border:1px solid rgba(22,163,74,0.18);
+  border-radius:20px;
+  padding:2rem;
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:20px;
+}
+
+.hero-amount{font-size:44px;color:#4ade80;font-weight:700}
+
+.kpi-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+
+.kpi{
+background:rgba(255,255,255,0.03);
+padding:16px;
+border-radius:14px;
+border:1px solid rgba(255,255,255,0.07);
+}
+
+/* table */
+.rides-card{
+background:rgba(255,255,255,0.03);
+border-radius:16px;
+border:1px solid rgba(255,255,255,0.07);
+overflow:hidden;
+}
+
+.ride-row{
+display:grid;
+grid-template-columns:130px 1fr 90px 90px 100px 120px;
+padding:14px;
+border-bottom:1px solid rgba(255,255,255,0.05);
+}
+
+/* status */
+.status-pill{padding:4px 10px;border-radius:99px;font-size:10px}
+.s-delivered{background:rgba(34,197,94,0.12);color:#4ade80}
+.s-failed{background:rgba(239,68,68,0.12);color:#f87171}
+.s-transit{background:rgba(59,130,246,0.12);color:#60a5fa}
+
+</style>
 </head>
+
 <body>
 
-<div class="container mt-5">
-<h2>Rider Dashboard</h2>
+<!-- =========================
+     RIDER DASHBOARD
+========================= -->
+
+<div class="header">
+<h2>🚴 Rider Dashboard</h2>
+
+<div>
+<a href="/rider/online"><button class="status-btn online">Go Online</button></a>
+<a href="/rider/offline"><button class="status-btn offline">Go Offline</button></a>
+</div>
+</div>
+
+<div class="container">
 
 <div id="map"></div>
 
-<table class="table table-bordered">
-<thead>
-<tr>
-<th>Order Number</th>
-<th>Product</th>
-<th>Quantity</th>
-<th>Status</th>
-<th>Action</th>
-</tr>
-</thead>
-<tbody>
+<div>
+<h3>Orders</h3>
+
 {% for order in orders %}
-<tr>
-<td>{{ order.order_number }}</td>
-<td>{{ order.product_name }}</td>
-<td>{{ order.quantity }}</td>
-<td>{{ order.rider_status }}</td>
-<td>
-{% if order.rider_status == 'Delivered' %}
-<span class="badge bg-success">Delivered</span>
-{% elif order.rider_status == 'Picked' %}
-<span class="badge bg-warning text-dark">On the way</span>
-<a href="/verify_delivery/{{ order.id }}" class="btn btn-success btn-sm">Verify OTP</a>
-{% elif order.rider_status == 'Accepted' %}
-<button class="btn btn-primary btn-sm" onclick="pickupOrder({{ order.id }})">Pickup</button>
-{% if order.pickup_address %}<small>Pickup: {{ order.pickup_address }}</small>{% endif %}
-{% elif order.rider_status in ['Pending','Assigned'] %}
-<a href="/accept_order/{{ order.id }}" class="btn btn-info btn-sm">Accept Order</a>
+<div class="card">
+
+<b>{{ order.order_number }}</b><br>
+{{ order.product_name }} (x{{ order.quantity }})<br>
+Customer: {{ order.customer_name }}<br>
+
+<span class="badge {{ order.rider_status }}">
+{{ order.rider_status }}
+</span>
+
+<br><br>
+
+{% if order.rider_status == 'Assigned' %}
+<a href="/accept_order/{{ order.id }}">
+<button style="background:#3b82f6;color:#fff">Accept</button>
+</a>
 {% endif %}
-</td>
-</tr>
+
+{% if order.rider_status == 'Accepted' %}
+<button onclick="pickupOrder({{ order.id }})">Pickup</button>
+{% endif %}
+
+{% if order.rider_status == 'Picked' %}
+<a href="/verify_delivery/{{ order.id }}">
+<button style="background:#22c55e">Verify OTP</button>
+</a>
+{% endif %}
+
+</div>
 {% endfor %}
-</tbody>
-</table>
+
+</div>
+</div>
+
+<!-- =========================
+     EARNINGS SECTION (MERGED)
+========================= -->
+
+<nav class="nav">
+  <div class="brand">
+    <span class="brand-name">Ravi Mart</span>
+    <span class="brand-role">Rider Earnings</span>
+  </div>
+  <a href="/rider_dashboard" class="nav-back">⬅ Back</a>
+</nav>
+
+<div class="page">
+
+<div class="hero">
+  <div>
+    <div>Total Earnings</div>
+    <div class="hero-amount">₹{{ summary.total_earnings }}</div>
+  </div>
+</div>
+
+<div class="kpi-strip">
+  <div class="kpi">Today ₹{{ summary.today_earnings }}</div>
+  <div class="kpi">Week ₹{{ summary.week_earnings }}</div>
+  <div class="kpi">Rides {{ summary.total_rides }}</div>
+  <div class="kpi">Km {{ summary.total_km }}</div>
+</div>
+
+<div class="rides-card">
+
+{% if rides %}
+{% for r in rides %}
+<div class="ride-row">
+
+<div>
+<b>#{{ r.order_number }}</b>
+</div>
+
+<div>{{ r.address }}</div>
+
+<div>{{ r.distance_km }} km</div>
+
+<div>₹{{ r.rider_earnings }}</div>
+
+<div>
+<span class="status-pill s-{{ r.status }}">{{ r.status }}</span>
+</div>
+
+<div>{{ r.delivered_at }}</div>
+
+</div>
+{% endfor %}
+{% endif %}
 
 </div>
 
+</div>
+
+<!-- =========================
+     SCRIPTS
+========================= -->
+
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
 <script>
-const map = L.map('map').setView([17.440894,78.444348],13);
+const orders = {{ orders | tojson }};
+
+const map = L.map('map').setView([17.4, 78.4], 12);
+
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-    attribution:'© OpenStreetMap contributors'
+maxZoom:19
 }).addTo(map);
 
-const orders = {{ orders|tojson }};
-let markers = {};
-let routes = {};
-let riderMarkers = {};
-let bounds = []; // global bounds
-
-function parseCoord(val){
-    const num = parseFloat(val);
-    return isNaN(num)?null:num;
-}
-async function pickupOrder(id){
-
-    await fetch("/pickup_order/" + id);
-
-    // reload orders from backend
-    location.reload();
-}
-async function initializeDashboard(){
-    initOrderMarkers();
-    await sendLocation();
-    await updateRiders();
+function addMarker(latlng,text){
+return L.marker(latlng).addTo(map).bindPopup(text);
 }
 
-initializeDashboard();
-// Smoothly update route without flickering
-async function drawRouteSmooth(start, end, id, color="blue"){
-    if(!start || !end) return;
-    const apiKey = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImM1MjljOGZjNzkwYzQzZTc4ODU4NGM4MDczZjAyNjBmIiwiaCI6Im11cm11cjY0In0="; // replace with your ORS key
-    const url = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${apiKey}&start=${start[1]},${start[0]}&end=${end[1]},${end[0]}`;
-    try {
-        const res = await fetch(url);
-        const data = await res.json();
-        const coords = data.features[0].geometry.coordinates;
-        const routePoints = coords.map(c => [c[1], c[0]]);
-
-        if(routes[id]){
-            const latlngs = routes[id].getLatLngs();
-            if(JSON.stringify(latlngs) !== JSON.stringify(routePoints)){
-                routes[id].setLatLngs(routePoints);
-            }
-        } else {
-            routes[id] = L.polyline(routePoints, {color: color, weight: 5}).addTo(map);
-        }
-    } catch(err){ console.log("Route error", err); }
+async function drawRoute(a,b,color){
+const url=`https://router.project-osrm.org/route/v1/driving/${a[1]},${a[0]};${b[1]},${b[0]}?overview=full&geometries=geojson`;
+const res=await fetch(url);
+const data=await res.json();
+if(!data.routes) return;
+const coords=data.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]);
+L.polyline(coords,{color,weight:4}).addTo(map);
 }
 
-// Initialize Store & Customer markers + static Store->Customer route
-function initOrderMarkers(){
-    orders.forEach(o=>{
-        if(o.is_otp_verified) return; // skip delivered/verified orders
-
-        const pickupLat = parseCoord(o.pickup_lat);
-        const pickupLng = parseCoord(o.pickup_lng);
-        const custLat = parseCoord(o.customer_lat);
-        const custLng = parseCoord(o.customer_lng);
-
-        // Store marker
-        if(pickupLat && pickupLng && !markers["pickup_"+o.id]){
-            markers["pickup_"+o.id] = L.marker([pickupLat,pickupLng],{
-                icon:L.icon({iconUrl:"https://cdn-icons-png.flaticon.com/512/684/684908.png",iconSize:[30,30]})
-            }).addTo(map).bindPopup("<b>Store</b><br>"+(o.pickup_address||"Store"));
-        }
-
-        // Customer marker
-        if(custLat && custLng && !markers["cust_"+o.id]){
-            markers["cust_"+o.id] = L.marker([custLat,custLng],{
-                icon:L.icon({iconUrl:"https://cdn-icons-png.flaticon.com/512/149/149071.png",iconSize:[30,30]})
-            }).addTo(map).bindPopup("<b>"+(o.customer_name||"Customer")+"</b><br>"+(o.customer_address||""));
-        }
-
-        // Store->Customer route (blue)
-        if(pickupLat && pickupLng && custLat && custLng){
-            drawRouteSmooth([pickupLat,pickupLng],[custLat,custLng],"store_customer_"+o.id,"blue");
-        }
-
-        if(pickupLat && pickupLng) bounds.push([pickupLat,pickupLng]);
-        if(custLat && custLng) bounds.push([custLat,custLng]);
-    });
-
-    if(bounds.length>0) map.fitBounds(bounds,{padding:[50,50]});
+function pickupOrder(id){
+fetch("/pickup_order/"+id).then(()=>location.reload());
 }
 
-// Update rider markers + live routes
-async function updateRiders(){
-    try{
-        const res = await fetch("/get_rider_locations");
-        const data = await res.json();
-        data.forEach(r=>{
-            const lat = parseCoord(r.lat);
-            const lng = parseCoord(r.lng);
-            if(!lat || !lng) return;
+function loadMap(){
+orders.forEach(order=>{
+const pickup=[parseFloat(order.pickup_lat),parseFloat(order.pickup_lng)];
+const customer=[parseFloat(order.customer_lat),parseFloat(order.customer_lng)];
 
+addMarker(pickup,"Store");
+addMarker(customer,"Customer");
 
-            // Rider marker
-          if(riderMarkers[r.id]){
-    animateMarker(riderMarkers[r.id], lat, lng);
-} else {
-    riderMarkers[r.id] = L.marker([lat,lng],{
-        icon:L.icon({
-            iconUrl:"https://cdn-icons-png.flaticon.com/512/1008/1008100.png",
-            iconSize:[50,50]
-        })
-    }).addTo(map).bindPopup("<b>"+(r.name||"Rider")+"</b>");
+if(order.rider_status==="Accepted"){
+const rider=[parseFloat(order.rider_lat),parseFloat(order.rider_lng)];
+addMarker(rider,"Rider");
+drawRoute(rider,pickup,"blue");
 }
 
-// auto follow only logged-in rider
-const riderId = parseInt("{{ session['rider'] }}");
-if(r.id === riderId){
-    map.flyTo([lat,lng],16,{animate:true,duration:1});
+if(order.rider_status==="Picked"){
+drawRoute(pickup,customer,"green");
 }
 
-function animateMarker(marker, newLat, newLng){
-
-    const start = marker.getLatLng();
-    const end = L.latLng(newLat, newLng);
-
-    const duration = 1000;
-    const frames = 30;
-    let frame = 0;
-
-    const latStep = (end.lat - start.lat) / frames;
-    const lngStep = (end.lng - start.lng) / frames;
-
-    const move = setInterval(function(){
-
-        frame++;
-
-        const lat = start.lat + latStep * frame;
-        const lng = start.lng + lngStep * frame;
-
-        marker.setLatLng([lat,lng]);
-
-        if(frame >= frames){
-            clearInterval(move);
-        }
-
-    }, duration / frames);
-}
-// Remove routes of OTP verified orders
-            orders.forEach(o=>{
-                if(o.is_otp_verified){
-                    ["rider_store_","rider_customer_","store_customer_"].forEach(prefix=>{
-                        const key = prefix+o.id;
-                        if(routes[key]){
-                            map.removeLayer(routes[key]);
-                            delete routes[key];
-                        }
-                    });
-                }
-            });
-
-            // Draw routes for active rider orders
-            orders.filter(o => 
-                (o.rider_status === "Accepted" || o.rider_status === "Picked") &&
-                o.rider_id === r.id &&
-                !o.is_otp_verified
-            ).forEach(o=>{
-                const pickupLat=parseCoord(o.pickup_lat);
-                const pickupLng=parseCoord(o.pickup_lng);
-                const custLat=parseCoord(o.customer_lat);
-                const custLng=parseCoord(o.customer_lng);
-
-                // Rider → Store (green)
-                if(o.rider_status==="Accepted" && pickupLat && pickupLng){
-                    drawRouteSmooth([lat,lng],[pickupLat,pickupLng],"rider_store_"+o.id,"green");
-                }
-
-                // Rider → Customer (orange)
-                if(o.rider_status==="Picked" && custLat && custLng){
-                    drawRouteSmooth([lat,lng],[custLat,custLng],"rider_customer_"+o.id,"orange");
-                }
-
-                // Store → Customer (blue)
-                if(pickupLat && pickupLng && custLat && custLng){
-                    drawRouteSmooth([pickupLat,pickupLng],[custLat,custLng],"store_customer_"+o.id,"blue");
-                }
-            });
-        });
-    } catch(err){ console.log("Rider update error",err); }
+});
 }
 
-// Send rider location to backend
-function sendLocation(){
-    if(navigator.geolocation){
-        navigator.geolocation.getCurrentPosition(async function(pos){
-            const lat = pos.coords.latitude;
-            const lng = pos.coords.longitude;
-
-            const riderId = parseInt("{{ session['rider'] }}");
-
-            if(riderMarkers[riderId]){
-                riderMarkers[riderId].setLatLng([lat,lng]);
-            } else {
-                riderMarkers[riderId] = L.marker([lat,lng],{
-                    icon:L.icon({iconUrl:"https://cdn-icons-png.flaticon.com/512/149/149059.png",iconSize:[30,30]})
-                }).addTo(map).bindPopup("<b>You are here</b>");
-            }
-
-            if(bounds.length === 0) map.setView([lat,lng], 13);
-
-            // Draw live routes for active rider orders
-            orders.filter(o => 
-                (o.rider_status === "Accepted" || o.rider_status === "Picked") &&
-                o.rider_id === riderId &&
-                !o.is_otp_verified
-            ).forEach(o => {
-                const pickupLat = parseCoord(o.pickup_lat);
-                const pickupLng = parseCoord(o.pickup_lng);
-                const custLat = parseCoord(o.customer_lat);
-                const custLng = parseCoord(o.customer_lng);
-
-                // Remove green line if picked
-                if(o.rider_status === "Picked" && routes["rider_store_" + o.id]){
-                    map.removeLayer(routes["rider_store_" + o.id]);
-                    delete routes["rider_store_" + o.id];
-                }
-
-                // Rider → Store (green)
-                if(o.rider_status === "Accepted" && pickupLat && pickupLng){
-                    drawRouteSmooth([lat,lng],[pickupLat,pickupLng],"rider_store_"+o.id,"green");
-                }
-
-                // Rider → Customer (orange)
-                if(o.rider_status === "Picked" && custLat && custLng){
-                    drawRouteSmooth([lat,lng],[custLat,custLng],"rider_customer_"+o.id,"orange");
-                }
-
-                // Store → Customer (blue)
-                if(pickupLat && pickupLng && custLat && custLng){
-                    drawRouteSmooth([pickupLat,pickupLng],[custLat,custLng],"store_customer_"+o.id,"blue");
-                }
-            });
-
-            // Send to backend
-            await fetch("/update_rider_location",{
-                method:"POST",
-                headers:{"Content-Type":"application/json"},
-                body:JSON.stringify({lat,lng})
-            });
-
-        }, function(err){
-            console.log("Geolocation error", err);
-        });
-    }
-}
-
-// Initialize everything
-initOrderMarkers();
-sendLocation();
-updateRiders();
-setInterval(sendLocation,5000);
-setInterval(updateRiders,5000);
+loadMap();
 </script>
 
 </body>

@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ravi Mart</title>
+<<<<<<< HEAD
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+=======
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+>>>>>>> 28ad25c (new mail)
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+<<<<<<< HEAD
+    height: 100%;
+    font-family: 'Georgia', serif;
+    background: #0c0c0b;
+    color: #f5f0e8;
+  }
+
+  /* NAV */
+  .nav {
+    background: #0c0c0b;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    padding: 0 2.5rem;
+=======
+    min-height: 100%;
+    font-family: 'Inter', sans-serif;
+    background: #0a0a0a;
+    color: #f0ede6;
+  }
+
+  /* ── NAV ── */
+  .nav {
+    background: rgba(10,10,10,0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    padding: 0 2rem;
+>>>>>>> 28ad25c (new mail)
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+<<<<<<< HEAD
+  .nav-brand { display: flex; align-items: center; gap: 12px; }
+  .nav-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    border: 1px solid rgba(255,200,60,0.4);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .nav-icon svg { width: 15px; height: 15px; stroke: #ffc83c; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .nav-name { font-size: 18px; color: #f5f0e8; letter-spacing: 0.02em; }
+  .nav-year {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px; color: rgba(255,255,255,0.3);
+    letter-spacing: 0.08em; text-transform: uppercase;
+  }
+
+  /* LAYOUT */
+  .page {
+    min-height: calc(100vh - 60px);
+    display: grid;
+    grid-template-columns: 55% 45%;
+    grid-template-rows: 1fr auto;
+  }
+
+  /* HERO */
+  .hero {
+    padding: 5rem 3.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border-right: 1px solid rgba(255,255,255,0.06);
+  }
+  .hero-tag {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: #ffc83c; margin-bottom: 2rem;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .hero-tag-line { width: 24px; height: 1px; background: #ffc83c; }
+  .hero-h1 { font-size: 56px; line-height: 1.05; color: #f5f0e8; margin-bottom: 1.5rem; font-style: italic; }
+  .hero-h1 span { font-style: normal; color: #ffc83c; }
+  .hero-desc {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px; line-height: 1.7;
+    color: rgba(255,255,255,0.45);
+    max-width: 400px; margin-bottom: 3.5rem; font-weight: 300;
+  }
+  .metrics {
+    display: flex;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    overflow: hidden;
+    width: fit-content;
+  }
+  .metric { padding: 18px 28px; text-align: center; }
+  .metric + .metric { border-left: 1px solid rgba(255,255,255,0.1); }
+  .metric-num { font-size: 22px; color: #f5f0e8; font-style: italic; }
+  .metric-lbl {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px; color: rgba(255,255,255,0.35);
+    margin-top: 3px; text-transform: uppercase; letter-spacing: 0.07em;
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    padding: 3rem 2.5rem;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .sidebar-label {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: rgba(255,255,255,0.25); margin-bottom: 1.5rem;
+  }
+  .link-list { display: flex; flex-direction: column; gap: 6px; }
+  .link-item {
+    display: flex; align-items: center; gap: 14px;
+    padding: 16px 18px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.07);
+    text-decoration: none;
+    background: rgba(255,255,255,0.02);
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .link-item:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.15); }
+  .link-dot {
+    width: 36px; height: 36px; border-radius: 8px;
+    flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  }
+  .link-dot svg { width: 16px; height: 16px; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .d-blue  { background: rgba(100,160,255,0.1); } .d-blue  svg { stroke: #64a0ff; }
+  .d-green { background: rgba(100,210,130,0.1); } .d-green svg { stroke: #64d282; }
+  .d-amber { background: rgba(255,200,60,0.1);  } .d-amber svg { stroke: #ffc83c; }
+  .d-pink  { background: rgba(240,130,170,0.1); } .d-pink  svg { stroke: #f082aa; }
+  .d-red   { background: rgba(240,90,90,0.1);   } .d-red   svg { stroke: #f05a5a; }
+  .link-body { flex: 1; }
+  .link-title { font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.85); }
+  .link-desc  { font-family: 'DM Sans', sans-serif; font-size: 11px; color: rgba(255,255,255,0.3); margin-top: 2px; }
+  .link-arr   { font-size: 16px; color: rgba(255,255,255,0.2); }
+
+  /* SEPARATOR */
+  .sep { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+  .sep-line { flex: 1; height: 1px; background: rgba(255,255,255,0.06); }
+  .sep-text {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 10px; color: rgba(255,255,255,0.2);
+    letter-spacing: 0.08em; text-transform: uppercase;
+  }
+
+  /* FOOTER */
+  footer {
+    grid-column: 1 / -1;
+    background: #0c0c0b;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    text-align: center; padding: 16px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px; color: rgba(255,255,255,0.2); letter-spacing: 0.04em;
+  }
+
+  /* RESPONSIVE */
+  @media (max-width: 768px) {
+    .page { grid-template-columns: 1fr; }
+    .hero { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.06); padding: 3rem 1.5rem; }
+    .hero-h1 { font-size: 38px; }
+    .sidebar { padding: 2rem 1.5rem; }
+    .metrics { flex-wrap: wrap; }
+    footer { grid-column: 1; }
+=======
+  .brand { display: flex; align-items: center; gap: 12px; }
+ .brand-logo {
+    width: 200px; height: 36px; border-radius: 10px;
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .brand-logo img { width: 200px; height: 150px; object-fit: contain; }
+  .brand-name { font-size: 16px; font-weight: 600; color: #f0ede6; letter-spacing: -0.01em; }
+  .nav-right { display: flex; align-items: center; gap: 16px; }
+  .nav-pill {
+    font-size: 11px; font-weight: 500; letter-spacing: 0.06em;
+    padding: 5px 12px; border-radius: 99px;
+    border: 1px solid rgba(245,158,11,0.3);
+    color: #f59e0b;
+  }
+  .nav-dot { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 2px rgba(34,197,94,0.2); }
+
+  /* ── TICKER ── */
+  .ticker {
+    border-top: 1px solid rgba(255,255,255,0.05);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    padding: 12px 0; overflow: hidden; margin-bottom: 0;
+  }
+  .ticker-track { display: flex; gap: 48px; width: max-content; animation: tick 18s linear infinite; }
+  .ticker-item {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px; font-weight: 500; color: rgba(240,237,230,0.3);
+    letter-spacing: 0.05em; white-space: nowrap;
+  }
+  .ticker-dot { width: 3px; height: 3px; border-radius: 50%; background: rgba(245,158,11,0.6); }
+  @keyframes tick { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+
+  /* ── HERO ── */
+  .hero {
+    padding: 5rem 2rem 3rem;
+    max-width: 1100px; margin: 0 auto;
+    display: grid; grid-template-columns: 1fr 420px; gap: 4rem; align-items: center;
+  }
+  .hero-eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 11px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase;
+    color: #f59e0b; margin-bottom: 1.5rem;
+  }
+  .hero-eyebrow-dot { width: 4px; height: 4px; border-radius: 50%; background: #f59e0b; }
+  .hero-h1 {
+    font-size: 52px; font-weight: 700; line-height: 1.08;
+    letter-spacing: -0.03em; color: #f0ede6; margin-bottom: 1.25rem;
+  }
+  .hero-h1 em { font-style: normal; color: #f59e0b; }
+  .hero-p {
+    font-size: 15px; font-weight: 300; line-height: 1.75;
+    color: rgba(240,237,230,0.5); max-width: 400px; margin-bottom: 2.5rem;
+  }
+  .stats-row { display: flex; border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; overflow: hidden; width: fit-content; }
+  .stat { padding: 16px 24px; text-align: center; }
+  .stat + .stat { border-left: 1px solid rgba(255,255,255,0.08); }
+  .stat-n { font-size: 22px; font-weight: 700; color: #f0ede6; letter-spacing: -0.02em; }
+  .stat-l { font-size: 10px; font-weight: 500; color: rgba(240,237,230,0.35); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.07em; }
+
+  /* ── PANEL ── */
+  .panel {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 20px; padding: 2rem;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .panel-head {
+    font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase;
+    color: rgba(240,237,230,0.3); margin-bottom: 4px;
+  }
+
+  /* ── ENTRY BUTTONS ── */
+  .entry-btn {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 16px; border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.07);
+    background: rgba(255,255,255,0.02);
+    text-decoration: none;
+    transition: background 0.12s, border-color 0.12s, transform 0.1s;
+    position: relative; overflow: hidden;
+  }
+  .entry-btn::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent);
+    transform: translateX(-100%); transition: transform 0.4s;
+  }
+  .entry-btn:hover::before { transform: translateX(100%); }
+  .entry-btn:hover { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.14); transform: translateY(-1px); }
+  .entry-btn:active { transform: translateY(0); }
+
+  .btn-icon { width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .btn-icon svg { width: 16px; height: 16px; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .ic-blue  { background: rgba(59,130,246,0.12); }  .ic-blue  svg { stroke: #60a5fa; }
+  .ic-green { background: rgba(34,197,94,0.12); }   .ic-green svg { stroke: #4ade80; }
+  .ic-amber { background: rgba(245,158,11,0.12); }  .ic-amber svg { stroke: #fbbf24; }
+  .ic-pink  { background: rgba(236,72,153,0.12); }  .ic-pink  svg { stroke: #f472b6; }
+  .ic-red   { background: rgba(239,68,68,0.12); }   .ic-red   svg { stroke: #f87171; }
+
+  .btn-body { flex: 1; min-width: 0; }
+  .btn-title { font-size: 13px; font-weight: 500; color: rgba(240,237,230,0.9); line-height: 1.3; }
+  .btn-sub { font-size: 11px; color: rgba(240,237,230,0.35); margin-top: 2px; }
+  .btn-arrow { font-size: 16px; color: rgba(240,237,230,0.2); transition: transform 0.12s, color 0.12s; }
+  .entry-btn:hover .btn-arrow { transform: translateX(2px); color: rgba(240,237,230,0.5); }
+
+  /* ── SEPARATOR ── */
+  .sep { display: flex; align-items: center; gap: 10px; margin: 2px 0; }
+  .sep-line { flex: 1; height: 1px; background: rgba(255,255,255,0.06); }
+  .sep-text { font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(240,237,230,0.2); }
+
+  /* ── FEATURES ── */
+  .features {
+    max-width: 1100px; margin: 3rem auto 0;
+    padding: 0 2rem 4rem;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+  }
+  .feat {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 16px; padding: 1.5rem;
+  }
+  .feat-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; }
+  .feat-icon svg { width: 16px; height: 16px; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .feat-title { font-size: 14px; font-weight: 600; color: #f0ede6; margin-bottom: 6px; }
+  .feat-desc { font-size: 12px; color: rgba(240,237,230,0.4); line-height: 1.6; }
+
+  /* ── FOOTER ── */
+  .footer-wrap { max-width: 1100px; margin: 0 auto; padding: 0 2rem; }
+  .footer {
+    border-top: 1px solid rgba(255,255,255,0.05);
+    padding: 1.25rem 0;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .footer-copy { font-size: 11px; color: rgba(240,237,230,0.2); letter-spacing: 0.03em; }
+  .footer-links { display: flex; gap: 20px; }
+  .footer-link { font-size: 11px; color: rgba(240,237,230,0.2); text-decoration: none; }
+  .footer-link:hover { color: rgba(240,237,230,0.5); }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 800px) {
+    .hero { grid-template-columns: 1fr; gap: 2.5rem; padding: 3rem 1.25rem 2rem; }
+    .hero-h1 { font-size: 36px; }
+    .features { grid-template-columns: 1fr; padding: 0 1.25rem 3rem; }
+    .footer { flex-direction: column; gap: 12px; text-align: center; }
+    .stats-row { flex-wrap: wrap; }
+>>>>>>> 28ad25c (new mail)
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+<<<<<<< HEAD
+  <div class="nav-brand">
+    <div class="nav-icon">
+      <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+    </div>
+    <span class="nav-name">Ravi Mart</span>
+  </div>
+  <span class="nav-year">Est. 2026</span>
+</nav>
+
+<!-- PAGE -->
+<div class="page">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-tag"><span class="hero-tag-line"></span> Your local marketplace</div>
+    <h1 class="hero-h1">Shop smarter,<br>live <span>better.</span></h1>
+    <p class="hero-desc">Quality products, fast delivery, and a seamless experience — all in one place.</p>
+    <div class="metrics">
+      <div class="metric">
+        <div class="metric-num">500+</div>
+        <div class="metric-lbl">Products</div>
+      </div>
+      <div class="metric">
+        <div class="metric-num">2 hr</div>
+        <div class="metric-lbl">Delivery</div>
+      </div>
+      <div class="metric">
+        <div class="metric-num">24/7</div>
+        <div class="metric-lbl">Support</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-label">Sign in to continue</div>
+    <div class="link-list">
+
+      <a href="/user_login" class="link-item">
+        <div class="link-dot d-blue">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        </div>
+        <div class="link-body">
+          <div class="link-title">User login</div>
+          <div class="link-desc">Browse and order products</div>
+        </div>
+        <div class="link-arr">›</div>
+      </a>
+
+      <a href="/register" class="link-item">
+        <div class="link-dot d-green">
+          <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+        </div>
+        <div class="link-body">
+          <div class="link-title">Create account</div>
+          <div class="link-desc">New here? Register as a user</div>
+        </div>
+        <div class="link-arr">›</div>
+      </a>
+
+      <div class="sep">
+        <div class="sep-line"></div>
+        <div class="sep-text">Partners</div>
+        <div class="sep-line"></div>
+      </div>
+
+      <a href="/rider_login" class="link-item">
+        <div class="link-dot d-amber">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div class="link-body">
+          <div class="link-title">Rider login</div>
+          <div class="link-desc">Manage your deliveries</div>
+        </div>
+        <div class="link-arr">›</div>
+      </a>
+
+      <a href="/rider_register" class="link-item">
+        <div class="link-dot d-pink">
+          <svg viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+        </div>
+        <div class="link-body">
+          <div class="link-title">Join as rider</div>
+          <div class="link-desc">Register to start delivering</div>
+        </div>
+        <div class="link-arr">›</div>
+      </a>
+
+      <div class="sep">
+        <div class="sep-line"></div>
+        <div class="sep-text">Admin</div>
+        <div class="sep-line"></div>
+      </div>
+
+      <a href="/admin_login" class="link-item">
+        <div class="link-dot d-red">
+          <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        </div>
+        <div class="link-body">
+          <div class="link-title">Admin panel</div>
+          <div class="link-desc">Manage the platform</div>
+        </div>
+        <div class="link-arr">›</div>
+      </a>
+
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer>© 2026 Ravi Mart · All rights reserved</footer>
+
+</div>
+=======
+  <div class="brand">
+    <div class="brand-logo">
+      <img src="/static/images/ravi_mart_logo.png" alt="Ravi Mart">
+    </div>
+    <span class="brand-name"></span>
+  </div>
+  <div class="nav-right">
+    <div class="nav-dot"></div>
+    <div class="nav-pill">Est. 2026</div>
+  </div>
+</nav>
+
+<!-- TICKER -->
+<div class="ticker">
+  <div class="ticker-track">
+    <span class="ticker-item"><span class="ticker-dot"></span>500+ Products</span>
+    <span class="ticker-item"><span class="ticker-dot"></span>15 min Delivery</span>
+    <span class="ticker-item"><span class="ticker-dot"></span>24/7 Support</span>
+    <span class="ticker-item"><span class="ticker-dot"></span>Hyderabad's Favourite Mart</span>
+    <span class="ticker-item"><span class="ticker-dot"></span>Fresh Every Day</span>
+    <span class="ticker-item"><span class="ticker-dot"></span>Rider Network Online</span>
+    <!-- duplicate for seamless loop -->
+    <span class="ticker-item"><span class="ticker-dot"></span>500+ Products</span>
+    <span class="ticker-item"><span class="ticker-dot"></span>15 min Delivery</span>
+    <span class="ticker-item"><span class="ticker-dot"></span>24/7 Support</span>
+    <span class="ticker-item"><span class="ticker-dot"></span>Hyderabad's Favourite Mart</span>
+    <span class="ticker-item"><span class="ticker-dot"></span>Fresh Every Day</span>
+    <span class="ticker-item"><span class="ticker-dot"></span>Rider Network Online</span>
+  </div>
+</div>
+
+<!-- HERO -->
+<div class="hero">
+  <div>
+    <div class="hero-eyebrow"><span class="hero-eyebrow-dot"></span>Your local marketplace</div>
+    <h1 class="hero-h1">Shop smarter,<br>live <em>better.</em></h1>
+    <p class="hero-p">Quality products, lightning-fast delivery, and a seamless experience — curated for your everyday life.</p>
+    <div class="stats-row">
+      <div class="stat"><div class="stat-n">500+</div><div class="stat-l">Products</div></div>
+      <div class="stat"><div class="stat-n">15 Min</div><div class="stat-l">Delivery</div></div>
+      <div class="stat"><div class="stat-n">24/7</div><div class="stat-l">Support</div></div>
+      <div class="stat"><div class="stat-n">4.9★</div><div class="stat-l">Rating</div></div>
+    </div>
+  </div>
+
+  <!-- PANEL -->
+  <div class="panel">
+    <div class="panel-head">Sign in to continue</div>
+
+    <a href="/user_login" class="entry-btn">
+      <div class="btn-icon ic-blue">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      </div>
+      <div class="btn-body">
+        <div class="btn-title">User login</div>
+        <div class="btn-sub">Browse and order products</div>
+      </div>
+      <div class="btn-arrow">›</div>
+    </a>
+
+    <a href="/register" class="entry-btn">
+      <div class="btn-icon ic-green">
+        <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+      </div>
+      <div class="btn-body">
+        <div class="btn-title">Create account</div>
+        <div class="btn-sub">New here? Register as a user</div>
+      </div>
+      <div class="btn-arrow">›</div>
+    </a>
+
+    <div class="sep"><div class="sep-line"></div><div class="sep-text">Partners</div><div class="sep-line"></div></div>
+
+    <a href="/rider_login" class="entry-btn">
+      <div class="btn-icon ic-amber">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      </div>
+      <div class="btn-body">
+        <div class="btn-title">Rider login</div>
+        <div class="btn-sub">Manage your deliveries</div>
+      </div>
+      <div class="btn-arrow">›</div>
+    </a>
+
+    <a href="/rider_register" class="entry-btn">
+      <div class="btn-icon ic-pink">
+        <svg viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+      </div>
+      <div class="btn-body">
+        <div class="btn-title">Join as rider</div>
+        <div class="btn-sub">Register to start delivering</div>
+      </div>
+      <div class="btn-arrow">›</div>
+    </a>
+
+    <div class="sep"><div class="sep-line"></div><div class="sep-text">Admin</div><div class="sep-line"></div></div>
+
+    <a href="/admin_login" class="entry-btn">
+      <div class="btn-icon ic-red">
+        <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+      </div>
+      <div class="btn-body">
+        <div class="btn-title">Admin panel</div>
+        <div class="btn-sub">Manage the platform</div>
+      </div>
+      <div class="btn-arrow">›</div>
+    </a>
+  </div>
+</div>
+
+<!-- FEATURES -->
+<div class="features">
+  <div class="feat">
+    <div class="feat-icon" style="background:rgba(245,158,11,0.1)">
+      <svg viewBox="0 0 24 24" style="stroke:#f59e0b"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+    </div>
+    <div class="feat-title">Lightning delivery</div>
+    <div class="feat-desc">Orders dispatched within minutes. Our rider network covers your area in under 2 hours.</div>
+  </div>
+  <div class="feat">
+    <div class="feat-icon" style="background:rgba(59,130,246,0.1)">
+      <svg viewBox="0 0 24 24" style="stroke:#60a5fa"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    </div>
+    <div class="feat-title">Secure & trusted</div>
+    <div class="feat-desc">Every transaction is encrypted. Shop with confidence knowing your data stays safe.</div>
+  </div>
+  <div class="feat">
+    <div class="feat-icon" style="background:rgba(34,197,94,0.1)">
+      <svg viewBox="0 0 24 24" style="stroke:#4ade80"><path d="M22 16.92v3a2 2 0 01-2.18 2A19.79 19.79 0 014.5 15.68 19.47 19.47 0 011.09 4.18 2 2 0 013.07 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L7.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+    </div>
+    <div class="feat-title">24/7 support</div>
+    <div class="feat-desc">Real humans, round the clock. Reach us anytime via chat, call, or in-app support.</div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div class="footer-wrap">
+  <div class="footer">
+    <span class="footer-copy">© 2026 Ravi Mart · All rights reserved</span>
+    <div class="footer-links">
+      <a href="#" class="footer-link">Privacy</a>
+      <a href="#" class="footer-link">Terms</a>
+      <a href="#" class="footer-link">Contact</a>
+    </div>
+  </div>
+</div>
+
+>>>>>>> 28ad25c (new mail)
+</body>
+</html>

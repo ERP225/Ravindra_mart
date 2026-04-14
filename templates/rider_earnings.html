@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Earnings — Ravi Mart Rider</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%;font-family:'Inter',sans-serif;background:#0a0a0a;color:#f0ede6}
+
+/* ── NAV ── */
+.nav{
+  background:rgba(10,10,10,0.92);
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+  border-bottom:1px solid rgba(255,255,255,0.06);
+  padding:0 2rem;height:60px;
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:100;
+}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#f59e0b,#d97706);display:flex;align-items:center;justify-content:center}
+.brand-logo svg{width:17px;height:17px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.brand-name{font-size:16px;font-weight:600;color:#f0ede6}
+.brand-role{font-size:10px;font-weight:500;background:rgba(245,158,11,0.12);color:#f59e0b;padding:2px 8px;border-radius:99px}
+.nav-back{display:flex;align-items:center;gap:6px;font-size:13px;color:rgba(240,237,230,0.45);text-decoration:none;transition:color .15s}
+.nav-back:hover{color:#f0ede6}
+.nav-back svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ── PAGE ── */
+.page{max-width:860px;margin:0 auto;padding:2.5rem 1.5rem}
+
+/* ── HERO BANNER ── */
+.hero{
+  background:rgba(22,163,74,0.06);
+  border:1px solid rgba(22,163,74,0.18);
+  border-radius:20px;
+  padding:2rem 2.5rem;
+  display:flex;align-items:center;justify-content:space-between;gap:2rem;
+  margin-bottom:1.5rem;
+  position:relative;overflow:hidden;
+}
+.hero::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,#16a34a,#4ade80,#16a34a);
+}
+.hero-left{}
+.hero-eyebrow{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:rgba(74,222,128,0.6);margin-bottom:8px}
+.hero-amount{font-size:44px;font-weight:700;letter-spacing:-0.04em;color:#4ade80;line-height:1}
+.hero-sub{font-size:13px;color:rgba(74,222,128,0.5);margin-top:6px}
+.hero-right{display:flex;gap:24px}
+.hero-stat{text-align:center}
+.hero-stat-n{font-size:22px;font-weight:700;color:#f0ede6;letter-spacing:-0.02em}
+.hero-stat-l{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:0.07em;color:rgba(240,237,230,0.3);margin-top:3px}
+.hero-divider{width:1px;background:rgba(255,255,255,0.07);align-self:stretch}
+
+/* ── KPI STRIP ── */
+.kpi-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem}
+.kpi{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px 18px}
+.kpi-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:rgba(240,237,230,0.28);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+.kpi-icon{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center}
+.kpi-icon svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.kpi-num{font-size:22px;font-weight:700;letter-spacing:-0.03em;color:#f0ede6}
+.kpi-sub{font-size:11px;color:rgba(240,237,230,0.3);margin-top:3px}
+
+/* ── CHART BAR ── */
+.chart-card{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:1.5rem;margin-bottom:1.5rem}
+.chart-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem}
+.chart-title{font-size:13px;font-weight:600;color:#f0ede6}
+.chart-legend{display:flex;gap:16px}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:11px;color:rgba(240,237,230,0.4)}
+.legend-dot{width:8px;height:8px;border-radius:2px}
+.bar-chart{display:flex;align-items:flex-end;gap:6px;height:100px}
+.bar-group{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1}
+.bar-wrap{width:100%;display:flex;justify-content:center;gap:3px;align-items:flex-end;height:80px}
+.bar{border-radius:4px 4px 0 0;width:10px;min-height:4px;transition:opacity 0.15s}
+.bar:hover{opacity:0.8}
+.bar-earn{background:#16a34a}
+.bar-km{background:rgba(59,130,246,0.5)}
+.bar-label{font-size:9px;color:rgba(240,237,230,0.3);white-space:nowrap}
+
+/* ── RIDES TABLE ── */
+.rides-card{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:16px;overflow:hidden}
+.rides-head{padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:space-between}
+.rides-title{font-size:13px;font-weight:600;color:#f0ede6}
+.filter-tabs{display:flex;gap:4px}
+.ftab{font-size:11px;font-weight:500;padding:5px 12px;border-radius:8px;border:none;background:transparent;color:rgba(240,237,230,0.4);cursor:pointer;transition:all .12s}
+.ftab:hover{background:rgba(255,255,255,0.05);color:rgba(240,237,230,0.7)}
+.ftab.active{background:rgba(245,158,11,0.12);color:#f59e0b}
+
+/* TABLE HEADER */
+.table-head{
+  display:grid;
+  grid-template-columns:130px 1fr 90px 80px 90px 100px;
+  gap:8px;padding:10px 20px;
+  background:rgba(255,255,255,0.02);
+  border-bottom:1px solid rgba(255,255,255,0.05);
+}
+.th{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:rgba(240,237,230,0.28)}
+.th:not(:first-child){text-align:right}
+
+/* RIDE ROW */
+.ride-row{
+  display:grid;
+  grid-template-columns:130px 1fr 90px 80px 90px 100px;
+  gap:8px;padding:14px 20px;
+  border-bottom:1px solid rgba(255,255,255,0.04);
+  align-items:center;
+  transition:background .1s;
+}
+.ride-row:hover{background:rgba(255,255,255,0.02)}
+.ride-row:last-child{border-bottom:none}
+
+.ride-order{font-size:12px;font-weight:600;color:#f0ede6}
+.ride-date{font-size:10px;color:rgba(240,237,230,0.3);margin-top:2px}
+
+.ride-addr{font-size:12px;color:rgba(240,237,230,0.6);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.ride-val{font-size:13px;color:rgba(240,237,230,0.7);text-align:right}
+.ride-earn{font-size:13px;font-weight:600;color:#4ade80;text-align:right}
+.ride-km{font-size:13px;color:rgba(240,237,230,0.55);text-align:right}
+
+/* STATUS PILLS */
+.status-pill{font-size:10px;font-weight:500;padding:4px 10px;border-radius:99px;text-align:right;display:inline-block;margin-left:auto}
+.s-delivered{background:rgba(34,197,94,0.12);color:#4ade80}
+.s-failed{background:rgba(239,68,68,0.12);color:#f87171}
+.s-pending{background:rgba(245,158,11,0.12);color:#fbbf24}
+.s-transit{background:rgba(59,130,246,0.12);color:#60a5fa}
+
+/* EMPTY */
+.empty{padding:3rem;text-align:center}
+.empty-icon{width:48px;height:48px;border-radius:14px;background:rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;margin:0 auto 12px}
+.empty-icon svg{width:22px;height:22px;stroke:rgba(240,237,230,0.2);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.empty-text{font-size:13px;color:rgba(240,237,230,0.25)}
+
+/* PAGINATION */
+.rides-foot{padding:12px 20px;border-top:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:space-between}
+.foot-info{font-size:11px;color:rgba(240,237,230,0.3)}
+.foot-btns{display:flex;gap:6px}
+.foot-btn{font-size:11px;padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:rgba(240,237,230,0.5);cursor:pointer;transition:all .12s}
+.foot-btn:hover{border-color:rgba(255,255,255,0.18);color:#f0ede6}
+.foot-btn:disabled{opacity:.3;cursor:default}
+
+@media(max-width:700px){
+  .hero{flex-direction:column;align-items:flex-start;padding:1.5rem}
+  .hero-amount{font-size:34px}
+  .kpi-strip{grid-template-columns:1fr 1fr}
+  .table-head,.ride-row{grid-template-columns:100px 1fr 70px 80px}
+  .th:nth-child(3),.ride-km,.th:nth-child(6),.status-pill{display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="brand">
+    <div class="brand-logo">
+      <svg viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+    </div>
+    <span class="brand-name">Ravi Mart</span>
+    <span class="brand-role">Rider</span>
+  </div>
+  <a href="/rider_dashboard" class="nav-back">
+    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+    Dashboard
+  </a>
+</nav>
+
+<div class="page">
+
+  <!-- HERO EARNINGS BANNER -->
+  <div class="hero">
+    <div class="hero-left">
+      <div class="hero-eyebrow">Total earnings</div>
+      <div class="hero-amount">₹{{ summary.total_earnings }}</div>
+      <div class="hero-sub">Across all completed deliveries</div>
+    </div>
+    <div class="hero-right">
+      <div class="hero-stat">
+        <div class="hero-stat-n">{{ summary.total_rides }}</div>
+        <div class="hero-stat-l">Total rides</div>
+      </div>
+      <div class="hero-divider"></div>
+      <div class="hero-stat">
+        <div class="hero-stat-n">{{ summary.total_km }}</div>
+        <div class="hero-stat-l">Total km</div>
+      </div>
+      <div class="hero-divider"></div>
+      <div class="hero-stat">
+        <div class="hero-stat-n" style="color:#fbbf24">{{ summary.avg_rating or '—' }}★</div>
+        <div class="hero-stat-l">Avg rating</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI STRIP -->
+  <div class="kpi-strip">
+    <div class="kpi">
+      <div class="kpi-label">
+        Today
+        <div class="kpi-icon" style="background:rgba(34,197,94,0.1)">
+          <svg viewBox="0 0 24 24" style="stroke:#4ade80"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+        </div>
+      </div>
+      <div class="kpi-num" style="color:#4ade80">₹{{ summary.today_earnings }}</div>
+      <div class="kpi-sub">{{ summary.today_rides }} rides</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">
+        This week
+        <div class="kpi-icon" style="background:rgba(59,130,246,0.1)">
+          <svg viewBox="0 0 24 24" style="stroke:#60a5fa"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </div>
+      </div>
+      <div class="kpi-num">₹{{ summary.week_earnings }}</div>
+      <div class="kpi-sub">{{ summary.week_rides }} rides</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">
+        Avg per ride
+        <div class="kpi-icon" style="background:rgba(245,158,11,0.1)">
+          <svg viewBox="0 0 24 24" style="stroke:#f59e0b"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        </div>
+      </div>
+      <div class="kpi-num">₹{{ summary.avg_per_ride }}</div>
+      <div class="kpi-sub">per delivery</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">
+        Avg distance
+        <div class="kpi-icon" style="background:rgba(139,92,246,0.1)">
+          <svg viewBox="0 0 24 24" style="stroke:#a78bfa"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+      </div>
+      <div class="kpi-num">{{ summary.avg_km }} <span style="font-size:14px;font-weight:400;color:rgba(240,237,230,0.4)">km</span></div>
+      <div class="kpi-sub">per ride</div>
+    </div>
+  </div>
+
+  <!-- MINI BAR CHART (last 7 days) -->
+  <div class="chart-card">
+    <div class="chart-head">
+      <span class="chart-title">Last 7 days</span>
+      <div class="chart-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#16a34a"></div>Earnings</div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(59,130,246,0.5)"></div>Distance</div>
+      </div>
+    </div>
+    <div class="bar-chart" id="bar-chart">
+      <!-- rendered by JS from weekly_data -->
+    </div>
+  </div>
+
+  <!-- RIDES TABLE -->
+  <div class="rides-card">
+    <div class="rides-head">
+      <span class="rides-title">Ride history</span>
+      <div class="filter-tabs">
+        <button class="ftab active" onclick="filter('all',this)">All</button>
+        <button class="ftab" onclick="filter('delivered',this)">Delivered</button>
+        <button class="ftab" onclick="filter('failed',this)">Failed</button>
+      </div>
+    </div>
+
+    <div class="table-head">
+      <div class="th">Order</div>
+      <div class="th" style="text-align:left">Address</div>
+      <div class="th">Distance</div>
+      <div class="th">Earnings</div>
+      <div class="th">Status</div>
+      <div class="th">Date</div>
+    </div>
+
+    <div id="rides-body">
+      {% if rides %}
+        {% for r in rides %}
+        <div class="ride-row" data-status="{{ r.status }}">
+          <div>
+            <div class="ride-order">#{{ r.order_number }}</div>
+            <div class="ride-date">{{ r.date if r.date else '—' }}</div>
+          </div>
+          <div class="ride-addr" title="{{ r.address if r.address else '' }}">
+            {{ r.address if r.address else '—' }}
+          </div>
+          <div class="ride-km">{{ r.distance_km }} km</div>
+          <div class="ride-earn">₹{{ r.rider_earnings }}</div>
+          <div><span class="status-pill s-{{ r.status }}">{{ r.status | capitalize }}</span></div>
+          <div class="ride-val">{{ r.delivered_at if r.delivered_at else '—' }}</div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty">
+          <div class="empty-icon">
+            <svg viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+          </div>
+          <div class="empty-text">No rides yet. Start delivering to see your history here.</div>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="rides-foot">
+      <span class="foot-info" id="foot-info">Showing {{ rides|length }} ride(s)</span>
+      <div class="foot-btns">
+        <button class="foot-btn" disabled>← Previous</button>
+        <button class="foot-btn">Next →</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ── FILTER ── */
+function filter(status, btn) {
+  document.querySelectorAll('.ftab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  let shown = 0;
+  document.querySelectorAll('.ride-row').forEach(row => {
+    const match = status === 'all' || row.dataset.status === status;
+    row.style.display = match ? '' : 'none';
+    if (match) shown++;
+  });
+  document.getElementById('foot-info').textContent = 'Showing ' + shown + ' ride(s)';
+}
+
+/* ── BAR CHART ── */
+const weekly = {{ weekly_data | tojson if weekly_data else '[]' }};
+
+(function buildChart() {
+  const container = document.getElementById('bar-chart');
+  if (!weekly || weekly.length === 0) {
+    container.innerHTML = '<div style="width:100%;text-align:center;font-size:12px;color:rgba(240,237,230,0.2);padding:20px 0">No weekly data available</div>';
+    return;
+  }
+  const maxEarn = Math.max(...weekly.map(d => d.earnings || 0), 1);
+  const maxKm   = Math.max(...weekly.map(d => d.km || 0), 1);
+  const H = 80;
+  weekly.forEach(d => {
+    const earnH = Math.round(((d.earnings || 0) / maxEarn) * H);
+    const kmH   = Math.round(((d.km || 0) / maxKm) * H);
+    const group = document.createElement('div');
+    group.className = 'bar-group';
+    group.innerHTML = `
+      <div class="bar-wrap">
+        <div class="bar bar-earn" style="height:${Math.max(earnH,4)}px" title="₹${d.earnings}"></div>
+        <div class="bar bar-km"   style="height:${Math.max(kmH,4)}px"   title="${d.km} km"></div>
+      </div>
+      <div class="bar-label">${d.label || ''}</div>`;
+    container.appendChild(group);
+  });
+})();
+</script>
+</body>
+</html>

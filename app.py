@@ -1139,7 +1139,7 @@ def payment_success(order_number=None):
         WHERE oh.order_number=?
     """, (order_number,))
 
-    order_details = cursor.fetchall()
+    order_details = cursor.fetchone()
 
     db.close()
 
@@ -1152,7 +1152,7 @@ def payment_success(order_number=None):
     return render_template(
         "payment_success.html",
         order_number=order_number,
-        order=order_details
+        order=order_details, order_id=order_details["id"] 
     )
 # ---------------- MY ORDERS ----------------
 
@@ -1180,6 +1180,7 @@ def my_orders():
     db.close()
 
     return render_template("my_orders.html", orders=orders)
+
 
 # API route for JS map to fetch orders as JSON
 @app.route("/get_customer_orders")

@@ -300,7 +300,11 @@ body {
   align-items: center;
   gap: 10px;
 }
-
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
 .cart-btn {
   display: flex;
   align-items: center;
@@ -464,13 +468,18 @@ body {
 
 .card:hover .card-img img { transform: scale(1.07); }
 
-.card-body {
-  padding: 14px;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
 
+card-body {
+  display: flex;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  min-height: 100vh;
+}
+.card .body {
+  padding: 14px;
+}
+ 
 .card .name {
   font-family: 'Syne', sans-serif;
   font-size: 14px;
@@ -640,12 +649,14 @@ body {
   animation: fadeUp 0.4s ease both;
 }
 
-.card:nth-child(1) { animation-delay: 0.1s; }
-.card:nth-child(2) { animation-delay: 0.15s; }
-.card:nth-child(3) { animation-delay: 0.2s; }
-.card:nth-child(4) { animation-delay: 0.25s; }
-.card:nth-child(5) { animation-delay: 0.3s; }
-.card:nth-child(6) { animation-delay: 0.35s; }
+
+.grid .card { animation: fadeUp 0.4s ease both; }
+.grid .card:nth-child(1) { animation-delay: 0.3s; }
+.grid .card:nth-child(2) { animation-delay: 0.35s; }
+.grid .card:nth-child(3) { animation-delay: 0.4s; }
+.grid .card:nth-child(4) { animation-delay: 0.45s; }
+.grid .card:nth-child(5) { animation-delay: 0.3s; }
+.grid .card:nth-child(6) { animation-delay: 0.35s; }
 
 .nav {
     background: rgba(10,10,10,0.92);
@@ -677,13 +688,12 @@ body {
     color: #f59e0b;
   }
 .description{
-font-size:11px;
-font-weight:400;   /* not bold */
+font-size:11px;          /* smaller text */
 color:var(--muted);
-margin-bottom:6px;
+margin-bottom:8px;
 
-display:-webkit-box;
--webkit-line-clamp:2;
+display:-webkit-box;     /* limit lines */
+-webkit-line-clamp:2;    /* show only 2 lines */
 -webkit-box-orient:vertical;
 overflow:hidden;
 }

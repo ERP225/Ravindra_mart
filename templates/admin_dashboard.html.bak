@@ -734,7 +734,6 @@ body {
                 <option>Groceries</option>
                 <option>Beverages</option>
                 <option>Snacks</option>
-				<option>Drinks</option>
               </select>
             </div>
           </div>

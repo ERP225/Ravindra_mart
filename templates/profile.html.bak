@@ -140,7 +140,7 @@ display:none;
 <div class="profile-pic-wrapper">
 
 <img id="profilePic"
-src="{{ url_for('static', filename='profile_pic/' + (user['profile_pic'] or 'default.png')) }}">
+src="{{ url_for('static', filename=user['profile_pic'] or 'default.jpg') }}">
 
 <button type="button" class="camera-btn"
 onclick="document.getElementById('fileInput').click();">

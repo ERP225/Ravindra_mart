@@ -671,27 +671,27 @@ def update_profile():
 
         filename = secure_filename(file.filename)
 
-        # ✅ define correct path
-        filepath = os.path.join("static/profile_pics", filename)
+        upload_folder = "static/profile_pic"
+        os.makedirs(upload_folder, exist_ok=True)
 
-        # save file
+        filepath = os.path.join(upload_folder, filename)
+
         file.save(filepath)
 
-        # store DB path
-        profile_pic = f"profile_pics/{filename}"
+        profile_pic = filename   # store only filename in DB
 
     conn = get_db_connection()
 
     if profile_pic:
         conn.execute("""
-            UPDATE users 
-            SET username=?, email=?, phoneno=?, profile_pic=? 
+            UPDATE users
+            SET username=?, email=?, phoneno=?, profile_pic=?
             WHERE id=?
         """, (username, email, phoneno, profile_pic, user_id))
     else:
         conn.execute("""
-            UPDATE users 
-            SET username=?, email=?, phoneno=? 
+            UPDATE users
+            SET username=?, email=?, phoneno=?
             WHERE id=?
         """, (username, email, phoneno, user_id))
 

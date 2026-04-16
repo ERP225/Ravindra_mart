@@ -363,6 +363,18 @@ def admin_riders():
     conn.close()
 
     return render_template("admin_riders.html", riders=riders)	
+@app.route("/approve_rider/<int:rider_id>")
+def approve_rider(rider_id):
+
+    conn = sqlite3.connect("database.db")
+    cur = conn.cursor()
+
+    cur.execute("UPDATE riders SET status='Approved' WHERE id=?", (rider_id,))
+    conn.commit()
+    conn.close()
+
+    return redirect("/admin_riders")
+	
 #UPDATE ORDER STATUS
 @app.route("/update_order_status/<int:order_id>/<status>")
 def update_order_status(order_id, status):
@@ -658,15 +670,15 @@ def update_profile():
     if file and file.filename != "":
 
         filename = secure_filename(file.filename)
+	    upload_folder = "static/profile_pic"
+	    os.makedirs(upload_folder, exist_ok=True)
 
-        # ✅ define correct path
-        filepath = os.path.join("static/profile_pics", filename)
+        filepath = os.path.join("static/profile_pic", filename)
+	    
 
-        # save file
         file.save(filepath)
 
-        # store DB path
-        profile_pic = f"profile_pics/{filename}"
+         profile_pic = filename   # ✅ store only filename in DB
 
     conn = get_db_connection()
 

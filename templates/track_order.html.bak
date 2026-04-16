@@ -55,22 +55,6 @@ h2 {
     border-radius:8px;
     color:white;
 }
-
-.status {
-    padding:5px 12px;
-    border-radius:8px;
-    color:#fff;
-    font-weight:600;
-    text-transform:capitalize;
-}
-
-/* status colors */
-.status.pending { background:#f59e0b; }
-.status.assigned { background:#6366f1; }
-.status.accepted { background:#3b82f6; }
-.status.picked { background:#10b981; }
-.status.delivered { background:#16a34a; }
-.status.cancelled { background:#ef4444; }
 </style>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>

@@ -2,316 +2,236 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Rider Dashboard + Earnings</title>
+<title>Rider Dashboard – Ravi Mart</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-
-/* =========================
-   GLOBAL
-========================= */
-body{
-margin:0;
-font-family:Arial;
-background:#0a0a0a;
-color:#fff;
-}
-
-/* =========================
-   DASHBOARD HEADER
-========================= */
-.header{
-padding:15px;
-display:flex;
-justify-content:space-between;
-background:#111;
-border-bottom:1px solid #222;
-}
-
-.status-btn{
-padding:8px 12px;
-border:none;
-border-radius:6px;
-cursor:pointer;
-}
-
-.online{background:#22c55e;}
-.offline{background:#ef4444;color:#fff;}
-
-/* =========================
-   DASHBOARD LAYOUT
-========================= */
-.container{
-display:grid;
-grid-template-columns:1fr 1fr;
-gap:20px;
-padding:20px;
-}
-
-#map{
-height:500px;
-border-radius:12px;
-}
-
-.card{
-background:#111;
-padding:12px;
-margin-bottom:10px;
-border-radius:10px;
-border:1px solid #222;
-}
-
-.badge{
-padding:4px 8px;
-border-radius:6px;
-font-size:12px;
-}
-
-.Assigned{background:#f59e0b;}
-.Accepted{background:#3b82f6;}
-.Picked{background:#a855f7;}
-
-/* =========================
-   EARNINGS PAGE (FULL CSS)
-========================= */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{min-height:100%;font-family:'Inter',sans-serif;background:#0a0a0a;color:#f0ede6}
-
-.nav{
-  background:rgba(10,10,10,0.92);
-  backdrop-filter:blur(20px);
-  border-bottom:1px solid rgba(255,255,255,0.06);
-  padding:0 2rem;height:60px;
-  display:flex;align-items:center;justify-content:space-between;
-  position:sticky;top:0;z-index:100;
+:root{
+  --bg:#0b0c0e;--surface:#111317;--border:rgba(255,255,255,0.07);
+  --accent:#f59e0b;--green:#22c55e;--blue:#3b82f6;--purple:#a855f7;
+  --red:#ef4444;--text:#e8e4dc;--muted:#6b7280;
+  --font-h:'Syne',sans-serif;--font-b:'DM Sans',sans-serif;
 }
-
-.brand{display:flex;align-items:center;gap:12px}
-.brand-name{font-size:16px;font-weight:600}
-.brand-role{font-size:10px;background:rgba(245,158,11,0.12);color:#f59e0b;padding:2px 8px;border-radius:99px}
-
-.nav-back{color:#aaa;text-decoration:none;font-size:13px}
-
-.page{max-width:860px;margin:0 auto;padding:2rem 1rem}
-
-.hero{
-  background:rgba(22,163,74,0.06);
-  border:1px solid rgba(22,163,74,0.18);
-  border-radius:20px;
-  padding:2rem;
-  display:flex;
-  justify-content:space-between;
-  margin-bottom:20px;
-}
-
-.hero-amount{font-size:44px;color:#4ade80;font-weight:700}
-
-.kpi-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
-
-.kpi{
-background:rgba(255,255,255,0.03);
-padding:16px;
-border-radius:14px;
-border:1px solid rgba(255,255,255,0.07);
-}
-
-/* table */
-.rides-card{
-background:rgba(255,255,255,0.03);
-border-radius:16px;
-border:1px solid rgba(255,255,255,0.07);
-overflow:hidden;
-}
-
-.ride-row{
-display:grid;
-grid-template-columns:130px 1fr 90px 90px 100px 120px;
-padding:14px;
-border-bottom:1px solid rgba(255,255,255,0.05);
-}
-
-/* status */
-.status-pill{padding:4px 10px;border-radius:99px;font-size:10px}
-.s-delivered{background:rgba(34,197,94,0.12);color:#4ade80}
-.s-failed{background:rgba(239,68,68,0.12);color:#f87171}
-.s-transit{background:rgba(59,130,246,0.12);color:#60a5fa}
-
+html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:var(--font-b)}
+.nav{display:flex;align-items:center;justify-content:space-between;padding:0 1.25rem;height:56px;background:rgba(11,12,14,0.96);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:200;backdrop-filter:blur(16px)}
+.brand{font-family:var(--font-h);font-size:17px;font-weight:800}
+.brand span{color:var(--accent)}
+.nav-right{display:flex;gap:8px;align-items:center}
+.btn{padding:7px 13px;border:none;border-radius:8px;cursor:pointer;font-family:var(--font-b);font-size:12px;font-weight:500;text-decoration:none;display:inline-block;transition:opacity .15s}
+.btn:hover{opacity:.82}
+.btn-online{background:var(--green);color:#000}
+.btn-offline{background:var(--red);color:#fff}
+.btn-accept{background:var(--blue);color:#fff}
+.btn-pickup{background:var(--purple);color:#fff}
+.btn-otp{background:var(--green);color:#000}
+.main{display:grid;grid-template-columns:1fr 360px;height:calc(100vh - 56px)}
+#map{height:100%;z-index:1}
+.sidebar{overflow-y:auto;border-left:1px solid var(--border);background:var(--surface);padding:14px;display:flex;flex-direction:column;gap:10px}
+.sec-label{font-family:var(--font-h);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);padding-bottom:6px;border-bottom:1px solid var(--border)}
+.order-card{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.order-head{display:flex;justify-content:space-between;align-items:center}
+.order-num{font-family:var(--font-h);font-size:13px;font-weight:700}
+.badge{padding:3px 9px;border-radius:99px;font-size:10px;font-weight:600}
+.badge-Assigned{background:rgba(245,158,11,.15);color:var(--accent)}
+.badge-Accepted{background:rgba(59,130,246,.15);color:#60a5fa}
+.badge-Picked{background:rgba(168,85,247,.15);color:#c084fc}
+.order-info{font-size:12px;color:#9ca3af;line-height:1.6}
+.order-info strong{color:var(--text)}
+.order-actions{display:flex;gap:8px}
+.earn-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:auto}
+.kpi{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+.kpi .lbl{font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted)}
+.kpi .val{font-family:var(--font-h);font-size:18px;font-weight:700;color:#4ade80;margin-top:2px}
+.kpi .val.blue{color:#60a5fa}
+.kpi .val.purple{color:#c084fc}
+.history{padding:16px;max-width:920px;margin:0 auto}
+.history h2{font-family:var(--font-h);font-size:17px;margin-bottom:12px}
+table{width:100%;border-collapse:collapse;background:var(--surface);border-radius:14px;overflow:hidden;border:1px solid var(--border)}
+th{text-align:left;padding:10px 14px;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);border-bottom:1px solid var(--border)}
+td{padding:11px 14px;font-size:12px;border-bottom:1px solid rgba(255,255,255,.04)}
+.pill{padding:3px 9px;border-radius:99px;font-size:10px}
+.pill-delivered{background:rgba(34,197,94,.1);color:#4ade80}
+.legend{position:absolute;bottom:14px;left:14px;z-index:500;background:rgba(11,12,14,.88);backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:11px;display:none;flex-direction:column;gap:5px}
+.leg-row{display:flex;align-items:center;gap:8px}
+.leg-line{width:22px;height:3px;border-radius:2px}
 </style>
 </head>
-
 <body>
 
-<!-- =========================
-     RIDER DASHBOARD
-========================= -->
-
-<div class="header">
-<h2>🚴 Rider Dashboard</h2>
-
-<div>
-<a href="/rider/online"><button class="status-btn online">Go Online</button></a>
-<a href="/rider/offline"><button class="status-btn offline">Go Offline</button></a>
-</div>
-</div>
-
-<div class="container">
-
-<div id="map"></div>
-
-<div>
-<h3>Orders</h3>
-
-{% for order in orders %}
-<div class="card">
-
-<b>{{ order.order_number }}</b><br>
-{{ order.product_name }} (x{{ order.quantity }})<br>
-Customer: {{ order.customer_name }}<br>
-
-<span class="badge {{ order.rider_status }}">
-{{ order.rider_status }}
-</span>
-
-<br><br>
-
-{% if order.rider_status == 'Assigned' %}
-<a href="/accept_order/{{ order.id }}">
-<button style="background:#3b82f6;color:#fff">Accept</button>
-</a>
-{% endif %}
-
-{% if order.rider_status == 'Accepted' %}
-<button onclick="pickupOrder({{ order.id }})">Pickup</button>
-{% endif %}
-
-{% if order.rider_status == 'Picked' %}
-<a href="/verify_delivery/{{ order.id }}">
-<button style="background:#22c55e">Verify OTP</button>
-</a>
-{% endif %}
-
-</div>
-{% endfor %}
-
-</div>
-</div>
-
-<!-- =========================
-     EARNINGS SECTION (MERGED)
-========================= -->
-
 <nav class="nav">
-  <div class="brand">
-    <span class="brand-name">Ravi Mart</span>
-    <span class="brand-role">Rider Earnings</span>
+  <div class="brand">Ravi<span>Mart</span>
+    <small style="font-size:10px;color:var(--muted);font-weight:400;margin-left:6px">Rider</small>
   </div>
-  <a href="/rider_dashboard" class="nav-back">⬅ Back</a>
+  <div class="nav-right">
+    <a href="/rider/online"  class="btn btn-online">● Online</a>
+    <a href="/rider/offline" class="btn btn-offline">○ Offline</a>
+    <a href="/rider_logout"  class="btn" style="background:#1f2127;color:var(--muted)">Logout</a>
+  </div>
 </nav>
 
-<div class="page">
+<div class="main">
+  <div style="position:relative">
+    <div id="map"></div>
+    <div class="legend" id="legend">
+      <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:2px">Route</div>
+      <div class="leg-row" id="leg-blue"  style="display:none"><div class="leg-line" style="background:#3b82f6"></div><span>Rider → Store</span></div>
+      <div class="leg-row" id="leg-green" style="display:none"><div class="leg-line" style="background:#22c55e"></div><span>Store → Customer</span></div>
+    </div>
+  </div>
 
-<div class="hero">
-  <div>
-    <div>Total Earnings</div>
-    <div class="hero-amount">₹{{ summary.total_earnings }}</div>
+  <div class="sidebar">
+    <div class="sec-label">Active Orders</div>
+
+    {% if orders %}
+      {% for order in orders %}
+      <div class="order-card">
+        <div class="order-head">
+          <span class="order-num">#{{ order.order_number }}</span>
+          <span class="badge badge-{{ order.rider_status }}">{{ order.rider_status }}</span>
+        </div>
+        <div class="order-info">
+          <strong>{{ order.product_name }}</strong> × {{ order.quantity }}<br>
+          📍 {{ order.customer_address or "—" }}
+        </div>
+        <div class="order-actions">
+          {% if order.rider_status == 'Assigned' %}
+            <a href="/accept_order/{{ order.id }}" class="btn btn-accept">Accept</a>
+          {% endif %}
+          {% if order.rider_status == 'Accepted' %}
+            <a href="/pickup_order/{{ order.id }}" class="btn btn-pickup">Picked Up ✓</a>
+          {% endif %}
+          {% if order.rider_status == 'Picked' %}
+            <a href="/verify_delivery/{{ order.id }}" class="btn btn-otp">Verify OTP ›</a>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div style="text-align:center;padding:2.5rem 1rem;color:var(--muted);font-size:13px">
+        <div style="font-size:32px;margin-bottom:8px">🛵</div>No active orders.
+      </div>
+    {% endif %}
+
+    <div class="sec-label" style="margin-top:auto">Earnings</div>
+    <div class="earn-grid">
+      <div class="kpi"><div class="lbl">Today</div>   <div class="val">₹{{ summary.today_earnings or 0 }}</div></div>
+      <div class="kpi"><div class="lbl">This Week</div><div class="val">₹{{ summary.week_earnings or 0 }}</div></div>
+      <div class="kpi"><div class="lbl">Total Rides</div><div class="val blue">{{ summary.total_rides or 0 }}</div></div>
+      <div class="kpi"><div class="lbl">Total KM</div>  <div class="val purple">{{ "%.1f"|format(summary.total_km or 0) }}</div></div>
+    </div>
   </div>
 </div>
 
-<div class="kpi-strip">
-  <div class="kpi">Today ₹{{ summary.today_earnings }}</div>
-  <div class="kpi">Week ₹{{ summary.week_earnings }}</div>
-  <div class="kpi">Rides {{ summary.total_rides }}</div>
-  <div class="kpi">Km {{ summary.total_km }}</div>
-</div>
-
-<div class="rides-card">
-
 {% if rides %}
-{% for r in rides %}
-<div class="ride-row">
-
-<div>
-<b>#{{ r.order_number }}</b>
+<div class="history">
+  <h2>Delivery History</h2>
+  <table>
+    <thead><tr><th>Order</th><th>Address</th><th>KM</th><th>Earned</th><th>Status</th><th>Date</th></tr></thead>
+    <tbody>
+    {% for r in rides %}
+    <tr>
+      <td><strong>#{{ r.order_number }}</strong></td>
+      <td style="color:var(--muted)">{{ r.address }}</td>
+      <td>{{ r.distance_km }}</td>
+      <td style="color:#4ade80">₹{{ r.rider_earnings }}</td>
+      <td><span class="pill pill-delivered">{{ r.status }}</span></td>
+      <td style="color:var(--muted)">{{ r.delivered_at }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
 </div>
-
-<div>{{ r.address }}</div>
-
-<div>{{ r.distance_km }} km</div>
-
-<div>₹{{ r.rider_earnings }}</div>
-
-<div>
-<span class="status-pill s-{{ r.status }}">{{ r.status }}</span>
-</div>
-
-<div>{{ r.delivered_at }}</div>
-
-</div>
-{% endfor %}
 {% endif %}
 
-</div>
-
-</div>
-
-<!-- =========================
-     SCRIPTS
-========================= -->
-
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-
 <script>
-const orders = {{ orders | tojson }};
+const ORDERS = {{ orders | tojson }};
 
-const map = L.map('map').setView([17.4, 78.4], 12);
-
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-maxZoom:19
+const map = L.map('map').setView([17.44, 78.44], 13);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
+  attribution:'©OpenStreetMap ©Carto',maxZoom:19
 }).addTo(map);
 
-function addMarker(latlng,text){
-return L.marker(latlng).addTo(map).bindPopup(text);
+function icon(e){
+  return L.divIcon({className:'',
+    html:`<div style="font-size:22px;filter:drop-shadow(0 2px 5px #000)">${e}</div>`,
+    iconSize:[30,30],iconAnchor:[15,15]});
 }
 
 async function drawRoute(a,b,color){
-const url=`https://router.project-osrm.org/route/v1/driving/${a[1]},${a[0]};${b[1]},${b[0]}?overview=full&geometries=geojson`;
-const res=await fetch(url);
-const data=await res.json();
-if(!data.routes) return;
-const coords=data.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]);
-L.polyline(coords,{color,weight:4}).addTo(map);
+  try{
+    const url=`https://router.project-osrm.org/route/v1/driving/${a[1]},${a[0]};${b[1]},${b[0]}?overview=full&geometries=geojson`;
+    const d=await(await fetch(url)).json();
+    if(!d.routes?.length)return;
+    L.polyline(d.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]),
+      {color,weight:5,opacity:.9}).addTo(map);
+  }catch(e){console.warn(e)}
 }
 
-function pickupOrder(id){
-fetch("/pickup_order/"+id).then(()=>location.reload());
-}
+async function loadMap(){
+  if(!ORDERS.length)return;
+  const bounds=[];
+  let showBlue=false,showGreen=false;
 
-function loadMap(){
-orders.forEach(order=>{
-const pickup=[parseFloat(order.pickup_lat),parseFloat(order.pickup_lng)];
-const customer=[parseFloat(order.customer_lat),parseFloat(order.customer_lng)];
+  for(const o of ORDERS){
+    const store    =[parseFloat(o.pickup_lat),   parseFloat(o.pickup_lng)];
+    const customer =[parseFloat(o.customer_lat), parseFloat(o.customer_lng)];
+    const rider    =[parseFloat(o.rider_lat),    parseFloat(o.rider_lng)];
 
-addMarker(pickup,"Store");
-addMarker(customer,"Customer");
+    bounds.push(store,customer);
+    L.marker(store,   {icon:icon('🏪')}).addTo(map).bindPopup('Store (Pickup)');
+    L.marker(customer,{icon:icon('🏠')}).addTo(map).bindPopup('Customer');
 
-if(order.rider_status==="Accepted"){
-const rider=[parseFloat(order.rider_lat),parseFloat(order.rider_lng)];
-addMarker(rider,"Rider");
-drawRoute(rider,pickup,"blue");
-}
+    // ── ACCEPTED: rider → store only (blue) ─────────────
+    // rider has not yet picked up; heading to store
+    if(o.rider_status==='Accepted'){
+      if(!isNaN(rider[0])&&!isNaN(rider[1])){
+        L.marker(rider,{icon:icon('🛵')}).addTo(map).bindPopup('Rider (going to store)');
+        bounds.push(rider);
+        await drawRoute(rider,store,'#3b82f6');  // rider → store
+        showBlue=true;
+        // NOTE: store→customer route is NOT drawn here
+      }
+    }
 
-if(order.rider_status==="Picked"){
-drawRoute(pickup,customer,"green");
-}
+    // ── PICKED: store → customer only (green) ────────────
+    // rider has picked up; rider→store route is hidden
+    if(o.rider_status==='Picked'){
+      if(!isNaN(rider[0])&&!isNaN(rider[1])){
+        L.marker(rider,{icon:icon('🛵')}).addTo(map).bindPopup('Rider (delivering)');
+        bounds.push(rider);
+      }
+      await drawRoute(store,customer,'#22c55e');  // store → customer
+      showGreen=true;
+      // NOTE: rider→store route is NOT drawn here
+    }
+  }
 
-});
+  if(showBlue)  document.getElementById('leg-blue').style.display='flex';
+  if(showGreen) document.getElementById('leg-green').style.display='flex';
+  if(showBlue||showGreen) document.getElementById('legend').style.display='flex';
+
+  const valid=bounds.filter(b=>!isNaN(b[0])&&!isNaN(b[1]));
+  if(valid.length) map.fitBounds(valid,{padding:[40,40]});
 }
 
 loadMap();
-</script>
 
+// GPS ping every 10 s
+function pushGPS(){
+  if(!navigator.geolocation)return;
+  navigator.geolocation.getCurrentPosition(p=>{
+    fetch('/update_rider_location',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({lat:p.coords.latitude,lng:p.coords.longitude})
+    });
+  });
+}
+pushGPS();
+setInterval(pushGPS,10000);
+</script>
 </body>
 </html>

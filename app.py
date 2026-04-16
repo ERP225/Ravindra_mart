@@ -1280,49 +1280,156 @@ def track_order(order_id):
 
     order = dict(order)
     return render_template("track_order.html", order=order)
-#--------RIDER REGISTRATION--------------------
+
+#  RIDER ROUTES — drop these into your existing app.py
+#  Replace every rider-related route you currently have
+
+
+# ── HELPER: haversine distance ───────────────────────────────
+def calculate_distance(lat1, lon1, lat2, lon2):
+    R = 6371
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = (math.sin(dlat/2)**2 +
+         math.cos(math.radians(lat1)) *
+         math.cos(math.radians(lat2)) *
+         math.sin(dlon/2)**2)
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+
+# ── HELPER: does this rider already have an active order? ────
+def has_active_order(rider_id):
+    conn = sqlite3.connect("database.db")
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT COUNT(*) AS cnt
+        FROM order_history
+        WHERE rider_id = ?
+          AND LOWER(TRIM(rider_status)) IN ('assigned','accepted','picked')
+    """, (rider_id,))
+    result = cur.fetchone()["cnt"]
+    conn.close()
+    return result > 0
+
+
+# ── AUTO-ASSIGN: called right after payment ──────────────────
+#
+#  Logic:
+#  1. Find all ONLINE riders who have NO active order
+#  2. Use rider_location table for their coordinates
+#  3. Pick the CLOSEST one to the store (pickup_lat/lng)
+#  4. Set rider_id + rider_status = 'Assigned'
+#  5. That order now belongs ONLY to that rider — no one else sees it
+#
+def auto_assign_order(order_id):
+    conn = sqlite3.connect("database.db")
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+
+    # Get store coords from the order
+    cur.execute("""
+        SELECT pickup_lat, pickup_lng
+        FROM order_history
+        WHERE id = ?
+    """, (order_id,))
+    order = cur.fetchone()
+
+    if not order:
+        conn.close()
+        return
+
+    store_lat = order["pickup_lat"]
+    store_lng = order["pickup_lng"]
+
+    # Get all ONLINE riders who have NO active order right now
+    cur.execute("""
+        SELECT r.id, rl.latitude, rl.longitude
+        FROM riders r
+        JOIN rider_location rl ON rl.rider_id = r.id
+        WHERE r.is_online = 1
+          AND r.status = 'Approved'
+          AND r.id NOT IN (
+              SELECT DISTINCT rider_id
+              FROM order_history
+              WHERE rider_id IS NOT NULL
+                AND LOWER(TRIM(rider_status)) IN ('assigned','accepted','picked')
+          )
+    """)
+    riders = cur.fetchall()
+
+    if not riders:
+        conn.close()
+        return  # No available rider — order stays Pending
+
+    # Find closest rider to store
+    best_rider_id = None
+    best_dist = float("inf")
+
+    for r in riders:
+        if r["latitude"] is None or r["longitude"] is None:
+            continue
+        dist = calculate_distance(
+            store_lat, store_lng,
+            float(r["latitude"]), float(r["longitude"])
+        )
+        if dist < best_dist:
+            best_dist = dist
+            best_rider_id = r["id"]
+
+    if not best_rider_id:
+        conn.close()
+        return
+
+    # Assign the order to this rider only
+    cur.execute("""
+        UPDATE order_history
+        SET rider_id = ?,
+            rider_status = 'Assigned',
+            status = 'Assigned'
+        WHERE id = ?
+    """, (best_rider_id, order_id))
+
+    conn.commit()
+    conn.close()
+
+
+# ── RIDER REGISTER ───────────────────────────────────────────
 @app.route("/rider_register", methods=["GET", "POST"])
 def rider_register():
     if request.method == "POST":
-        name = request.form["name"]
-        phone = request.form["phone"]
-        vehicle = request.form["vehicle"]
-        password = request.form["password"]
-
-        hashed_password = generate_password_hash(password)
+        name     = request.form["name"]
+        phone    = request.form["phone"]
+        vehicle  = request.form["vehicle"]
+        password = generate_password_hash(request.form["password"])
 
         conn = sqlite3.connect("database.db")
         cursor = conn.cursor()
-
         cursor.execute("""
             INSERT INTO riders (name, phone, vehicle, password, status, is_online)
             VALUES (?, ?, ?, ?, 'Pending', 0)
-        """, (name, phone, vehicle, hashed_password))
-
+        """, (name, phone, vehicle, password))
         conn.commit()
         conn.close()
-
         return redirect("/rider_login")
 
     return render_template("rider_register.html")
-#-----------------------RIDER LOGIN-----------------------------------
-from werkzeug.security import check_password_hash
 
+
+# ── RIDER LOGIN ──────────────────────────────────────────────
 @app.route("/rider_login", methods=["GET", "POST"])
 def rider_login():
     if request.method == "POST":
-        phone = request.form["phone"]
+        phone    = request.form["phone"]
         password = request.form["password"]
 
         conn = sqlite3.connect("database.db")
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-
         cursor.execute("""
-            SELECT * FROM riders 
-            WHERE phone=? AND status='Approved'
+            SELECT * FROM riders
+            WHERE phone = ? AND status = 'Approved'
         """, (phone,))
-
         rider = cursor.fetchone()
         conn.close()
 
@@ -1330,323 +1437,206 @@ def rider_login():
             session["rider"] = rider["id"]
             return redirect("/rider_dashboard")
 
-        return "Invalid phone or password"
+        flash("Invalid phone or password", "danger")
 
     return render_template("rider_login.html")
 
-@app.route("/admin_riders")
-def admin_riders():
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
 
-    cursor.execute("SELECT * FROM riders")
-    riders = cursor.fetchall()
-
-    conn.close()
-
-    return render_template("admin_riders.html", riders=riders)
-
-
-@app.route("/approve_rider/<int:id>")
-def approve_rider(id):
-    conn = sqlite3.connect("database.db")
-    cursor = conn.cursor()
-
-    cursor.execute("UPDATE riders SET status='Approved' WHERE id=?", (id,))
-    conn.commit()
-    conn.close()
-
-    return redirect("/admin_riders")
-
-
-
-	
+# ── GO ONLINE ────────────────────────────────────────────────
 @app.route("/rider/online")
 def rider_online():
     if "rider" not in session:
         return redirect("/rider_login")
 
     conn = sqlite3.connect("database.db")
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        UPDATE riders
-        SET is_online=1
-        WHERE id=?
-    """, (session["rider"],))
-
+    conn.execute("UPDATE riders SET is_online=1 WHERE id=?", (session["rider"],))
     conn.commit()
     conn.close()
-
     return redirect("/rider_dashboard")
 
 
+# ── GO OFFLINE ───────────────────────────────────────────────
 @app.route("/rider/offline")
 def rider_offline():
     if "rider" not in session:
         return redirect("/rider_login")
 
     conn = sqlite3.connect("database.db")
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        UPDATE riders SET is_online=0 
-        WHERE id=?
-    """, (session["rider"],))
-
+    conn.execute("UPDATE riders SET is_online=0 WHERE id=?", (session["rider"],))
     conn.commit()
     conn.close()
-
     return redirect("/rider_dashboard")
 
-from math import radians, sin, cos, sqrt, atan2
 
-def calculate_distance(lat1, lon1, lat2, lon2):
-    R = 6371
-
-    dlat = math.radians(lat2 - lat1)
-    dlon = math.radians(lon2 - lon1)
-
-    a = (math.sin(dlat/2)**2 +
-         math.cos(math.radians(lat1)) *
-         math.cos(math.radians(lat2)) *
-         math.sin(dlon/2)**2)
-
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
-
-    return R * c
-	
-def auto_assign_order(order_id):
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT pickup_lat, pickup_lng 
-        FROM order_history 
-        WHERE id=?
-    """, (order_id,))
-
-    order = cursor.fetchone()
-    if not order:
-        conn.close()
-        return
-
-    pickup_lat = float(order["pickup_lat"])
-    pickup_lng = float(order["pickup_lng"])
-
-    cursor.execute("""
-        SELECT r.id, l.latitude, l.longitude
-        FROM riders r
-        JOIN rider_location l ON r.id = l.rider_id
-        WHERE r.is_online=1 AND r.status='Approved'
-    """)
-
-    riders = cursor.fetchall()
-
-    best_rider = None
-    min_dist = float("inf")
-
-    for r in riders:
-        if r["latitude"] is None or r["longitude"] is None:
-            continue
-
-        d = calculate_distance(
-            pickup_lat,
-            pickup_lng,
-            float(r["latitude"]),
-            float(r["longitude"])
-        )
-
-        if d < min_dist:
-            min_dist = d
-            best_rider = r["id"]
-
-    if best_rider:
-        cursor.execute("""
-            UPDATE order_history
-            SET rider_id=?, rider_status='Assigned'
-            WHERE id=?
-        """, (best_rider, order_id))
-
-    conn.commit()
-    conn.close()
-	
-def auto_assign_all_pending_orders():
-    conn = sqlite3.connect("database.db")
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT id 
-        FROM order_history 
-        WHERE rider_id IS NULL
-    """)
-
-    orders = cursor.fetchall()
-    conn.close()
-
-    for o in orders:
-        auto_assign_order(o[0])
-#----------------------------RIDER DASHBOARD-----------------------------------------	
-
-@app.route('/rider_dashboard')
+# ── RIDER DASHBOARD ──────────────────────────────────────────
+#
+#  KEY RULE: only show orders WHERE rider_id = this rider
+#  Orders accepted by another rider are NEVER visible here.
+#
+@app.route("/rider_dashboard")
 def rider_dashboard():
-
     if "rider" not in session:
         return redirect("/rider_login")
 
-    rider_id = session.get("rider")
+    rider_id = session["rider"]
 
     conn = sqlite3.connect("database.db")
     conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
+    cur = conn.cursor()
 
-    # -------------------------
-    # ORDERS (YOUR ORIGINAL QUERY)
-    # -------------------------
-    cursor.execute("""
-        SELECT oh.*,
-               p.name AS product_name,
-               u.username AS customer_name,
-               u.address AS customer_address,
-               u.latitude AS customer_lat,
-               u.longitude AS customer_lng,
-               rl.latitude AS rider_lat,
-               rl.longitude AS rider_lng
+    # ACTIVE ORDERS — only this rider's, only active statuses
+    cur.execute("""
+        SELECT
+            oh.*,
+            rl.latitude  AS rider_lat,
+            rl.longitude AS rider_lng,
+            p.name       AS product_name
         FROM order_history oh
-        LEFT JOIN products p ON oh.product_id = p.id
-        JOIN users u ON u.id = oh.user_id
+        JOIN products p ON p.id = oh.product_id
         LEFT JOIN rider_location rl ON rl.rider_id = oh.rider_id
-        WHERE (
-            oh.rider_id = ?
-            OR (oh.rider_id IS NULL AND oh.rider_status = 'Pending')
-        )
-        AND oh.rider_status != 'Delivered'
+        WHERE oh.rider_id = ?
+          AND LOWER(TRIM(oh.rider_status)) IN ('assigned','accepted','picked')
         ORDER BY oh.id DESC
     """, (rider_id,))
+    orders = [dict(r) for r in cur.fetchall()]
 
-    orders = [dict(row) for row in cursor.fetchall()]
-
-    # -------------------------
-    # SUMMARY
-    # -------------------------
-    cursor.execute("""
-        SELECT 
-            COUNT(*) AS total_rides,
-            IFNULL(SUM(rider_earnings),0) AS total_earnings,
-            IFNULL(SUM(distance_km),0) AS total_km
+    # EARNINGS SUMMARY
+    cur.execute("""
+        SELECT
+            COUNT(*)                          AS total_rides,
+            IFNULL(SUM(rider_earnings), 0)    AS total_earnings,
+            IFNULL(SUM(distance_km), 0)       AS total_km,
+            IFNULL(SUM(CASE
+                WHEN DATE(created_at) = DATE('now')
+                THEN rider_earnings END), 0)  AS today_earnings,
+            IFNULL(SUM(CASE
+                WHEN DATE(created_at) >= DATE('now','-7 days')
+                THEN rider_earnings END), 0)  AS week_earnings
         FROM order_history
-        WHERE rider_id=? AND rider_status='Delivered'
+        WHERE rider_id = ?
+          AND LOWER(TRIM(rider_status)) = 'delivered'
     """, (rider_id,))
+    summary = dict(cur.fetchone())
 
-    summary = dict(cursor.fetchone())
+    # DELIVERY HISTORY (last 50)
+    cur.execute("""
+        SELECT
+            oh.order_number,
+            oh.customer_address AS address,
+            oh.distance_km,
+            oh.rider_earnings,
+            oh.rider_status     AS status,
+            oh.created_at       AS delivered_at
+        FROM order_history oh
+        WHERE oh.rider_id = ?
+          AND LOWER(TRIM(oh.rider_status)) = 'delivered'
+        ORDER BY oh.id DESC
+        LIMIT 50
+    """, (rider_id,))
+    rides = [dict(r) for r in cur.fetchall()]
 
     conn.close()
 
     return render_template(
         "rider_dashboard.html",
         orders=orders,
-        summary=summary
+        summary=summary,
+        rides=rides,
+        has_active_order=has_active_order(rider_id)
     )
-#--------------ACCEPT ORDER-------------------------
-@app.route('/accept_order/<int:order_id>')
+
+
+# ── ACCEPT ORDER ─────────────────────────────────────────────
+#
+#  Once rider A accepts → rider_status = 'Accepted'
+#  No other rider can accept it (it was never shown to them
+#  because auto_assign_order sets rider_id exclusively).
+#
+@app.route("/accept_order/<int:order_id>")
 def accept_order(order_id):
     if "rider" not in session:
         return redirect("/rider_login")
 
-    conn = sqlite3.connect("database.db")
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        UPDATE order_history
-        SET rider_status='Accepted',
-            rider_id=?
-        WHERE id=?
-    """, (session["rider"], order_id))
-
-    conn.commit()
-    conn.close()
-
-    return redirect("/rider_dashboard")
-
-
-# Pickup order
-@app.route('/pickup_order/<int:order_id>')
-def pickup_order(order_id):
-    if "rider" not in session:
-        return redirect("/rider_login")
+    rider_id = session["rider"]
 
     conn = sqlite3.connect("database.db")
-    cursor = conn.cursor()
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
 
-    cursor.execute("""
+    # Block if rider already busy
+    cur.execute("""
+        SELECT COUNT(*) AS cnt FROM order_history
+        WHERE rider_id = ?
+          AND LOWER(TRIM(rider_status)) IN ('accepted','picked')
+    """, (rider_id,))
+    if cur.fetchone()["cnt"] > 0:
+        conn.close()
+        flash("Complete your current order first.", "warning")
+        return redirect("/rider_dashboard")
+
+    # Confirm order is still 'Assigned' to THIS rider only
+    cur.execute("""
+        SELECT id FROM order_history
+        WHERE id = ?
+          AND rider_id = ?
+          AND LOWER(TRIM(rider_status)) = 'assigned'
+    """, (order_id, rider_id))
+    order = cur.fetchone()
+
+    if not order:
+        conn.close()
+        flash("Order no longer available.", "warning")
+        return redirect("/rider_dashboard")
+
+    cur.execute("""
         UPDATE order_history
-        SET rider_status='Picked'
-        WHERE id=?
+        SET rider_status = 'Accepted', status = 'Accepted'
+        WHERE id = ?
     """, (order_id,))
 
     conn.commit()
     conn.close()
-
     return redirect("/rider_dashboard")
 
 
-	
-	
-	
-#---------------UPFDATE RIDER LOCATION--------------------
-@app.route("/update_rider_location", methods=["POST"])
-def update_rider_location():
+# ── PICKUP ORDER ─────────────────────────────────────────────
+#
+#  Rider has reached the store and picked up the parcel.
+#  rider_status: Accepted → Picked
+#  Map will now hide rider→store route and show store→customer.
+#
+@app.route("/pickup_order/<int:order_id>")
+def pickup_order(order_id):
     if "rider" not in session:
-        return {"status": "error"}
+        return redirect("/rider_login")
 
     rider_id = session["rider"]
-    lat = request.json.get("lat")
-    lng = request.json.get("lng")
 
     conn = sqlite3.connect("database.db")
-    cursor = conn.cursor()
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
 
-    cursor.execute("""
-        SELECT rider_id FROM rider_location 
-        WHERE rider_id=?
-    """, (rider_id,))
-    exists = cursor.fetchone()
+    # Must belong to this rider and be in 'Accepted' state
+    cur.execute("""
+        SELECT id FROM order_history
+        WHERE id = ?
+          AND rider_id = ?
+          AND LOWER(TRIM(rider_status)) = 'accepted'
+    """, (order_id, rider_id))
 
-    if exists:
-        cursor.execute("""
-            UPDATE rider_location
-            SET latitude=?, longitude=?, updated_at=CURRENT_TIMESTAMP
-            WHERE rider_id=?
-        """, (lat, lng, rider_id))
-    else:
-        cursor.execute("""
-            INSERT INTO rider_location (rider_id, latitude, longitude)
-            VALUES (?, ?, ?)
-        """, (rider_id, lat, lng))
+    if not cur.fetchone():
+        conn.close()
+        return redirect("/rider_dashboard")
+
+    cur.execute("""
+        UPDATE order_history
+        SET rider_status = 'Picked', status = 'Out for Delivery'
+        WHERE id = ?
+    """, (order_id,))
 
     conn.commit()
     conn.close()
-
-    return {"status": "success"}
-#----------- GET RIDER LOCATION-----------------------------
-@app.route("/get_rider_locations")
-def get_rider_locations():
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT rider_id AS id, latitude AS lat, longitude AS lng 
-        FROM rider_location
-    """)
-
-    data = [dict(row) for row in cursor.fetchall()]
-    conn.close()
-
-    return jsonify(data)
-
+    return redirect("/rider_dashboard")
 #----------------DELIVERY ROUTE--------------------------
 @app.route("/get_delivery_route/<int:order_id>")
 def get_delivery_route(order_id):
@@ -1681,77 +1671,164 @@ def get_delivery_route(order_id):
         "assigned_rider": order["rider_id"],
         "riders": riders
     })
-# ------------------Verify OTP / Delivery-------------------------------------
-@app.route('/verify_delivery/<int:order_id>', methods=['GET', 'POST'])
-def verify_delivery(order_id):
-
-    if "rider" not in session:
-        return redirect("/rider_login")
+	
+@app.route("/get_order_rider/<int:order_id>")
+def get_order_rider(order_id):
 
     conn = sqlite3.connect("database.db")
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
+    cursor.execute("""
+        SELECT 
+            oh.id,
+            oh.rider_id,
+            oh.rider_status,
+
+            a.latitude AS cust_lat,
+            a.longitude AS cust_lng,
+
+            rl.latitude AS rider_lat,
+            rl.longitude AS rider_lng,
+
+            r.name AS rider_name,
+            r.phone AS rider_phone
+
+        FROM order_history oh
+
+        LEFT JOIN users u ON u.id = oh.user_id
+        LEFT JOIN rider_location rl ON rl.rider_id = oh.rider_id
+		left join addresses a on a.user_id=u.id 
+        LEFT JOIN riders r ON r.id = oh.rider_id
+
+        WHERE oh.id = ?
+    """, (order_id,))
+
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        return {}
+
+    return dict(row)
+
+
+# ── VERIFY DELIVERY OTP ──────────────────────────────────────
+#
+#  Rider enters OTP given by customer.
+#  On success: calculate distance, compute earnings (₹7/km),
+#  mark order Delivered.
+#
+@app.route("/verify_delivery/<int:order_id>", methods=["GET", "POST"])
+def verify_delivery(order_id):
+    if "rider" not in session:
+        return redirect("/rider_login")
+
+    rider_id = session["rider"]
+
+    conn = sqlite3.connect("database.db")
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+
     try:
-        # ---------------- POST (OTP VERIFY) ----------------
         if request.method == "POST":
+            otp_entered = request.form.get("otp", "").strip()
 
-            otp_entered = request.form.get("otp")
-
-            cursor.execute("""
-                SELECT delivery_otp,
-                       pickup_lat,
-                       pickup_lng,
-                       customer_lat,
-                       customer_lng
+            cur.execute("""
+                SELECT delivery_otp, pickup_lat, pickup_lng,
+                       customer_lat, customer_lng
                 FROM order_history
-                WHERE id=?
-            """, (order_id,))
+                WHERE id = ? AND rider_id = ?
+                  AND LOWER(TRIM(rider_status)) = 'picked'
+            """, (order_id, rider_id))
 
-            order = cursor.fetchone()
+            order = cur.fetchone()
 
             if not order:
-                flash("Order not found", "danger")
+                flash("Order not found.", "danger")
                 return redirect("/rider_dashboard")
 
-            # ---------------- OTP CHECK ----------------
-            if str(order["delivery_otp"]) == str(otp_entered):
-
-                # ---------- DISTANCE ----------
+            if str(order["delivery_otp"]).strip() == otp_entered:
                 distance = calculate_distance(
-                    float(order["pickup_lat"]),
-                    float(order["pickup_lng"]),
-                    float(order["customer_lat"]),
-                    float(order["customer_lng"])
+                    float(order["pickup_lat"]),  float(order["pickup_lng"]),
+                    float(order["customer_lat"]), float(order["customer_lng"])
                 )
-
-                # ---------- EARNING (₹7 per km) ----------
                 earning = round(distance * 7, 2)
 
-                # ---------- UPDATE ORDER ----------
-                cursor.execute("""
+                cur.execute("""
                     UPDATE order_history
-                    SET rider_status='Delivered',
-                        status='Delivered',
-                        is_otp_verified=1,
-                        distance_km=?,
-                        rider_earnings=?
-                    WHERE id=?
-                """, (distance, earning, order_id))
+                    SET rider_status   = 'Delivered',
+                        status         = 'Delivered',
+                        is_otp_verified = 1,
+                        distance_km    = ?,
+                        rider_earnings = ?
+                    WHERE id = ?
+                """, (round(distance, 2), earning, order_id))
 
                 conn.commit()
-
-                flash(f"Delivered Successfully | Earned ₹{earning}", "success")
+                flash(f"✅ Delivered! You earned ₹{earning}", "success")
                 return redirect("/rider_dashboard")
-
             else:
-                flash("Invalid OTP", "danger")
+                flash("❌ Invalid OTP. Try again.", "danger")
 
-        # ---------------- GET ----------------
         return render_template("verify_otp.html", order_id=order_id)
 
     finally:
         conn.close()
+
+
+# ── UPDATE RIDER LOCATION (GPS ping every 10 s from JS) ──────
+@app.route("/update_rider_location", methods=["POST"])
+def update_rider_location():
+    if "rider" not in session:
+        return jsonify({"status": "error"})
+
+    rider_id = session["rider"]
+    data = request.get_json()
+    lat  = data.get("lat")
+    lng  = data.get("lng")
+
+    conn = sqlite3.connect("database.db")
+    cur  = conn.cursor()
+
+    cur.execute("SELECT rider_id FROM rider_location WHERE rider_id=?", (rider_id,))
+    if cur.fetchone():
+        cur.execute("""
+            UPDATE rider_location
+            SET latitude=?, longitude=?, updated_at=CURRENT_TIMESTAMP
+            WHERE rider_id=?
+        """, (lat, lng, rider_id))
+    else:
+        cur.execute("""
+            INSERT INTO rider_location (rider_id, latitude, longitude)
+            VALUES (?, ?, ?)
+        """, (rider_id, lat, lng))
+
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "ok"})
+
+
+# ── GET RIDER LOCATIONS (admin / customer map use) ───────────
+@app.route("/get_rider_locations")
+def get_rider_locations():
+    conn = sqlite3.connect("database.db")
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT rider_id AS id, latitude AS lat, longitude AS lng
+        FROM rider_location
+    """)
+    data = [dict(r) for r in cur.fetchall()]
+    conn.close()
+    return jsonify(data)
+
+
+# ── RIDER LOGOUT ─────────────────────────────────────────────
+@app.route("/rider_logout")
+def rider_logout():
+    session.pop("rider", None)
+    return redirect("/rider_login")
 
 
 # ---------------- LOGOUT ----------------

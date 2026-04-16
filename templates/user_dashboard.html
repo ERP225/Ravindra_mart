@@ -696,7 +696,11 @@ overflow:hidden;
 
   <div class="profile-block">
     <div class="avatar-wrap">
-      <img src="{{ url_for('static', filename=user.profile_pic) }}" alt="Profile">
+      {% if user.profile_pic %}
+<img src="{{ url_for('static', filename='profile_pic/' + user.profile_pic) }}" alt="Profile">
+{% else %}
+<img src="{{ url_for('static', filename='images/default.png') }}" alt="Profile">
+{% endif %}
       <div class="online"></div>
     </div>
     <div class="profile-info">

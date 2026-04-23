@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ravi Mart</title>
-
+<title>Ravi Mart — Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 :root {
   --bg:       #080b0f;
@@ -18,794 +18,300 @@
   --accent2:  #ff6b35;
   --green:    #22d3a5;
   --red:      #ff4757;
+  --purple:   #a78bfa;
   --text:     #eceef2;
   --muted:    #5a6270;
-  --sidebar-w: 260px;
+  --sidebar-w: 240px;
 }
-
 *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
-
-body {
-  display: flex;
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'Outfit', sans-serif;
-  min-height: 100vh;
-}
+body { display:flex; background:var(--bg); color:var(--text); font-family:'Outfit',sans-serif; min-height:100vh; overflow-x:hidden; }
 
 /* ── SIDEBAR ── */
 .sidebar {
-  width: var(--sidebar-w);
-  background: var(--surface);
-  border-right: 1px solid var(--border);
-  height: 100vh;
-  position: fixed;
-  top: 0; left: 0;
-  display: flex;
-  flex-direction: column;
-  z-index: 200;
-  overflow-y: auto;
+  width:var(--sidebar-w); background:var(--surface);
+  border-right:1px solid var(--border);
+  height:100vh; position:fixed; top:0; left:0;
+  display:flex; flex-direction:column; z-index:200; overflow-y:auto;
 }
+.sidebar::-webkit-scrollbar{width:0}
 
-.sidebar::-webkit-scrollbar { width: 0; }
+.profile-block { padding:22px 16px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px; }
+.avatar-wrap { position:relative; flex-shrink:0; }
+.avatar-wrap img { width:48px; height:48px; border-radius:12px; object-fit:cover; border:2px solid var(--accent); }
+.avatar-placeholder { width:48px; height:48px; border-radius:12px; background:linear-gradient(135deg,rgba(240,165,0,.2),rgba(255,107,53,.2)); border:2px solid rgba(240,165,0,.3); display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
+.online-dot { position:absolute; bottom:2px; right:2px; width:9px; height:9px; background:var(--green); border-radius:50%; border:2px solid var(--surface); }
+.profile-info h4 { font-family:'Syne',sans-serif; font-size:14px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.profile-info p  { font-size:10px; color:var(--muted); margin-top:1px; text-transform:uppercase; letter-spacing:.07em; }
 
-/* PROFILE */
-.profile-block {
-  padding: 28px 20px 22px;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
+.nav-block { padding:14px 12px 6px; }
+.nav-label { font-size:10px; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); padding:0 6px; margin-bottom:5px; }
+.nav-btn { display:flex; align-items:center; gap:10px; width:100%; padding:9px 10px; background:transparent; border:none; border-radius:9px; color:var(--muted); font-family:'Outfit',sans-serif; font-size:13px; font-weight:500; cursor:pointer; margin-bottom:2px; transition:all .2s; text-align:left; text-decoration:none; }
+.nav-btn .ni { width:28px; height:28px; display:grid; place-items:center; border-radius:7px; background:transparent; font-size:12px; transition:all .2s; flex-shrink:0; }
+.nav-btn:hover { color:var(--text); background:var(--surface2); }
+.nav-btn:hover .ni { background:rgba(240,165,0,.12); color:var(--accent); }
+.nav-btn.active { color:var(--text); background:var(--surface2); }
+.nav-btn.active .ni { background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; }
 
-.avatar-wrap {
-  position: relative;
-  flex-shrink: 0;
-}
+.cats-block { padding:4px 12px 12px; }
+.cat-btn { display:flex; align-items:center; gap:9px; width:100%; padding:8px 10px; background:transparent; border:none; border-radius:9px; color:var(--muted); font-family:'Outfit',sans-serif; font-size:12px; cursor:pointer; margin-bottom:1px; transition:all .2s; text-align:left; text-decoration:none; }
+.cat-btn:hover { color:var(--text); background:var(--surface2); }
+.emoji { font-size:14px; width:20px; text-align:center; }
 
-.avatar-wrap img {
-  width: 52px; height: 52px;
-  border-radius: 14px;
-  object-fit: cover;
-  border: 2px solid var(--accent);
-}
-
-.avatar-wrap .online {
-  position: absolute;
-  bottom: 2px; right: 2px;
-  width: 10px; height: 10px;
-  background: var(--green);
-  border-radius: 50%;
-  border: 2px solid var(--surface);
-}
-
-.profile-info h4 {
-  font-family: 'Syne', sans-serif;
-  font-size: 15px;
-  font-weight: 700;
-}
-
-.profile-info p {
-  font-size: 11px;
-  color: var(--muted);
-  margin-top: 2px;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-}
-
-/* NAV */
-.nav-block {
-  padding: 18px 14px 8px;
-}
-
-.nav-label {
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--muted);
-  padding: 0 8px;
-  margin-bottom: 6px;
-}
-
-.nav-btn {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 10px 12px;
-  background: transparent;
-  border: none;
-  border-radius: 10px;
-  color: var(--muted);
-  font-family: 'Outfit', sans-serif;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  margin-bottom: 3px;
-  transition: all 0.2s;
-  text-align: left;
-}
-
-.nav-btn .ni {
-  width: 30px; height: 30px;
-  display: grid;
-  place-items: center;
-  border-radius: 8px;
-  background: transparent;
-  font-size: 13px;
-  transition: all 0.2s;
-  flex-shrink: 0;
-}
-
-.nav-btn:hover {
-  color: var(--text);
-  background: var(--surface2);
-}
-
-.nav-btn:hover .ni {
-  background: rgba(240,165,0,0.12);
-  color: var(--accent);
-}
-
-.nav-btn.active {
-  color: var(--text);
-  background: var(--surface2);
-}
-
-.nav-btn.active .ni {
-  background: linear-gradient(135deg, var(--accent), var(--accent2));
-  color: #fff;
-}
-
-/* CATEGORIES */
-.cats-block {
-  padding: 6px 14px 14px;
-}
-
-.cat-btn {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 9px 12px;
-  background: transparent;
-  border: none;
-  border-radius: 10px;
-  color: var(--muted);
-  font-family: 'Outfit', sans-serif;
-  font-size: 13px;
-  font-weight: 400;
-  cursor: pointer;
-  margin-bottom: 2px;
-  transition: all 0.2s;
-  text-align: left;
-}
-
-.cat-btn:hover {
-  color: var(--text);
-  background: var(--surface2);
-}
-
-.cat-btn .emoji {
-  font-size: 16px;
-  width: 24px;
-  text-align: center;
-}
-
-.sidebar-footer {
-  margin-top: auto;
-  padding: 14px;
-  border-top: 1px solid var(--border);
-}
-
-.logout-btn {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 10px 12px;
-  background: transparent;
-  border: none;
-  border-radius: 10px;
-  color: var(--muted);
-  font-family: 'Outfit', sans-serif;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-  text-align: left;
-}
-
-.logout-btn:hover {
-  background: rgba(255,71,87,0.1);
-  color: var(--red);
-}
+.sidebar-footer { margin-top:auto; padding:12px; border-top:1px solid var(--border); }
+.logout-btn { display:flex; align-items:center; gap:8px; width:100%; padding:9px 10px; background:transparent; border:none; border-radius:9px; color:var(--muted); font-family:'Outfit',sans-serif; font-size:13px; cursor:pointer; transition:all .2s; text-decoration:none; }
+.logout-btn:hover { background:rgba(255,71,87,.1); color:var(--red); }
 
 /* ── MAIN ── */
-.main {
-  margin-left: var(--sidebar-w);
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-}
+.main { margin-left:var(--sidebar-w); margin-right:0; flex:1; display:flex; flex-direction:column; min-height:100vh; }
 
 /* TOPBAR */
-.topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 18px 32px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  position: sticky; top: 0;
-  z-index: 100;
-}
-
-.logo {
-  font-family: 'Syne', sans-serif;
-  font-size: 22px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  background: linear-gradient(90deg, var(--accent), var(--accent2));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-/* SEARCH */
-.search-form {
-  display: flex;
-  align-items: center;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  overflow: hidden;
-  transition: border-color 0.2s;
-  flex: 1;
-  max-width: 420px;
-  margin: 0 24px;
-}
-
-.search-form:focus-within {
-  border-color: var(--accent);
-}
-
-.search-form input {
-  flex: 1;
-  padding: 11px 16px;
-  background: transparent;
-  border: none;
-  color: var(--text);
-  font-family: 'Outfit', sans-serif;
-  font-size: 14px;
-  outline: none;
-}
-
-.search-form input::placeholder { color: var(--muted); }
-
-.search-form button {
-  padding: 11px 18px;
-  background: linear-gradient(135deg, var(--accent), var(--accent2));
-  border: none;
-  color: #fff;
-  font-size: 14px;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-.search-form button:hover { opacity: 0.85; }
-
-.topbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.cart-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 16px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  color: var(--text);
-  font-family: 'Outfit', sans-serif;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  text-decoration: none;
-}
-
-.cart-btn:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.cart-btn i { font-size: 15px; }
-
-.cart-chip {
-  background: var(--accent);
-  color: #000;
-  font-size: 11px;
-  font-weight: 700;
-  width: 20px; height: 20px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-}
+.topbar { display:flex; align-items:center; justify-content:space-between; padding:14px 24px; background:var(--surface); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:100; gap:16px; }
+.logo { font-family:'Syne',sans-serif; font-size:20px; font-weight:800; letter-spacing:-.02em; background:linear-gradient(90deg,var(--accent),var(--accent2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; white-space:nowrap; }
+.search-form { display:flex; align-items:center; background:var(--surface2); border:1px solid var(--border); border-radius:11px; overflow:hidden; flex:1; max-width:420px; transition:border-color .2s; }
+.search-form:focus-within { border-color:var(--accent); }
+.search-form input { flex:1; padding:10px 14px; background:transparent; border:none; color:var(--text); font-family:'Outfit',sans-serif; font-size:13px; outline:none; }
+.search-form input::placeholder { color:var(--muted); }
+.search-form button { padding:10px 16px; background:linear-gradient(135deg,var(--accent),var(--accent2)); border:none; color:#fff; font-size:13px; cursor:pointer; }
+.cart-btn { display:flex; align-items:center; gap:7px; padding:8px 14px; background:var(--surface2); border:1px solid var(--border); border-radius:9px; color:var(--text); font-size:12px; font-weight:500; cursor:pointer; text-decoration:none; transition:all .2s; }
+.cart-btn:hover { border-color:var(--accent); color:var(--accent); }
+.cart-chip { background:var(--accent); color:#000; font-size:10px; font-weight:700; width:18px; height:18px; border-radius:50%; display:grid; place-items:center; }
 
 /* CONTENT */
-.content {
-  padding: 32px;
-  flex: 1;
-}
+.content { padding:24px; flex:1; }
 
-/* HERO BANNER */
-.hero {
-  background: linear-gradient(120deg, var(--surface2) 0%, #1a1200 100%);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 36px 40px;
-  margin-bottom: 32px;
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
+/* HERO */
+.hero { background:linear-gradient(120deg,var(--surface2) 0%,#1a1200 100%); border:1px solid var(--border); border-radius:18px; padding:28px 32px; margin-bottom:24px; position:relative; overflow:hidden; display:flex; align-items:center; justify-content:space-between; animation:fadeUp .4s ease .05s both; }
+.hero::before { content:''; position:absolute; top:-50px; right:-50px; width:200px; height:200px; border-radius:50%; background:radial-gradient(circle,rgba(240,165,0,.12),transparent 70%); }
+.hero-text h2 { font-family:'Syne',sans-serif; font-size:22px; font-weight:800; line-height:1.2; margin-bottom:8px; }
+.hero-text h2 span { background:linear-gradient(90deg,var(--accent),var(--accent2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hero-text p { font-size:13px; color:var(--muted); }
+.hero-emoji { font-size:60px; opacity:.9; z-index:1; }
 
-.hero::before {
-  content: '';
-  position: absolute;
-  top: -60px; right: -60px;
-  width: 240px; height: 240px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(240,165,0,0.12), transparent 70%);
-}
+/* STATS ROW */
+.stats-row { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:24px; }
+.stat-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; animation:fadeUp .4s ease both; }
+.stat-card:nth-child(1){animation-delay:.1s}.stat-card:nth-child(2){animation-delay:.15s}.stat-card:nth-child(3){animation-delay:.2s}
+.stat-label { font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:6px; }
+.stat-val   { font-family:'Syne',sans-serif; font-size:22px; font-weight:800; }
+.stat-val.green  { color:var(--green); }
+.stat-val.accent { color:var(--accent); }
+.stat-val.purple { color:var(--purple); }
 
-.hero::after {
-  content: '';
-  position: absolute;
-  bottom: -80px; left: 30%;
-  width: 300px; height: 300px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(255,107,53,0.06), transparent 70%);
-}
+/* COUPON BANNER */
+.coupon-banner { background:linear-gradient(120deg,#1a0a2e 0%,#0d1a2e 100%); border:1px solid rgba(167,139,250,0.2); border-radius:20px; padding:24px 32px; margin-bottom:24px; display:flex; align-items:center; justify-content:space-between; gap:16px; position:relative; overflow:hidden; animation:fadeUp .4s ease .1s both; }
+.coupon-banner::before { content:''; position:absolute; top:-40px; right:-40px; width:200px; height:200px; border-radius:50%; background:radial-gradient(circle,rgba(167,139,250,.1),transparent 70%); }
+.coupon-banner-left { display:flex; align-items:center; gap:16px; z-index:1; }
+.coupon-icon { font-size:36px; }
+.coupon-banner-text h3 { font-family:'Syne',sans-serif; font-size:16px; font-weight:700; color:var(--purple); }
+.coupon-banner-text p { font-size:12px; color:var(--muted); margin-top:3px; }
+.coupon-toggle-btn { padding:10px 20px; background:rgba(167,139,250,.15); border:1px solid rgba(167,139,250,.3); border-radius:10px; color:var(--purple); font-family:'Outfit',sans-serif; font-size:13px; font-weight:600; cursor:pointer; transition:all .2s; white-space:nowrap; z-index:1; }
+.coupon-toggle-btn:hover { background:rgba(167,139,250,.25); }
 
-.hero-text h2 {
-  font-family: 'Syne', sans-serif;
-  font-size: 28px;
-  font-weight: 800;
-  line-height: 1.2;
-  margin-bottom: 10px;
-}
+/* COUPON PANEL */
+.coupon-panel { display:none; background:var(--surface); border:1px solid rgba(167,139,250,.15); border-radius:16px; padding:24px; margin-bottom:24px; animation:fadeUp .3s ease both; }
+.coupon-panel.open { display:block; }
+.coupon-panel-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
+.coupon-panel-header h3 { font-family:'Syne',sans-serif; font-size:16px; font-weight:700; }
+.coupon-close { background:none; border:none; color:var(--muted); font-size:16px; cursor:pointer; transition:color .2s; }
+.coupon-close:hover { color:var(--red); }
+.coupon-input-row { display:flex; gap:10px; margin-bottom:20px; }
+.coupon-input { flex:1; padding:11px 16px; background:var(--surface2); border:1px solid var(--border); border-radius:10px; color:var(--text); font-family:'Outfit',sans-serif; font-size:14px; outline:none; transition:border-color .2s; text-transform:uppercase; letter-spacing:.05em; }
+.coupon-input:focus { border-color:var(--purple); }
+.coupon-apply-btn { padding:11px 20px; background:linear-gradient(135deg,#a78bfa,#7c3aed); border:none; border-radius:10px; color:#fff; font-family:'Outfit',sans-serif; font-size:13px; font-weight:600; cursor:pointer; transition:opacity .2s; }
+.coupon-apply-btn:hover { opacity:.85; }
+.coupon-msg { font-size:13px; margin-bottom:16px; min-height:20px; }
+.coupon-msg.success { color:var(--green); }
+.coupon-msg.error   { color:var(--red); }
+.coupon-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:12px; }
+.coupon-card { background:var(--surface2); border:1px dashed rgba(167,139,250,.3); border-radius:12px; padding:16px; cursor:pointer; transition:all .2s; position:relative; overflow:hidden; }
+.coupon-card:hover { border-color:var(--purple); transform:translateY(-2px); }
+.coupon-card.applied { border-color:var(--green); border-style:solid; }
+.coupon-card .c-code { font-family:'Syne',sans-serif; font-size:18px; font-weight:800; color:var(--purple); letter-spacing:.05em; margin-bottom:4px; }
+.coupon-card.applied .c-code { color:var(--green); }
+.coupon-card .c-desc { font-size:12px; color:var(--muted); }
+.coupon-card .c-save { font-size:11px; font-weight:600; color:var(--green); margin-top:6px; }
+.coupon-card .c-tag { position:absolute; top:10px; right:10px; font-size:10px; font-weight:700; padding:3px 8px; border-radius:20px; background:rgba(167,139,250,.15); color:var(--purple); }
+.coupon-card.applied .c-tag { background:rgba(34,211,165,.15); color:var(--green); }
 
-.hero-text h2 span {
-  background: linear-gradient(90deg, var(--accent), var(--accent2));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.hero-text p {
-  font-size: 14px;
-  color: var(--muted);
-  max-width: 340px;
-}
-
-.hero-emoji {
-  font-size: 72px;
-  opacity: 0.9;
-  z-index: 1;
-}
+/* TAB SWITCHER */
+.tab-row { display:flex; gap:7px; margin-bottom:18px; }
+.tab-btn { padding:7px 16px; background:var(--surface2); border:1px solid var(--border); border-radius:9px; color:var(--muted); font-family:'Outfit',sans-serif; font-size:12px; font-weight:500; cursor:pointer; transition:all .2s; }
+.tab-btn.active { background:linear-gradient(135deg,var(--accent),var(--accent2)); border-color:transparent; color:#fff; }
 
 /* SECTION HEADER */
-.sec-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
-}
-
-.sec-header h2 {
-  font-family: 'Syne', sans-serif;
-  font-size: 18px;
-  font-weight: 700;
-}
-
-.sec-header .count-pill {
-  font-size: 12px;
-  padding: 4px 12px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  color: var(--muted);
-}
+.sec-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+.sec-header h2 { font-family:'Syne',sans-serif; font-size:16px; font-weight:700; }
+.count-pill { font-size:11px; padding:3px 10px; background:var(--surface2); border:1px solid var(--border); border-radius:20px; color:var(--muted); }
 
 /* PRODUCT GRID */
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: 18px;
-}
+.grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:14px; }
+.grid-empty { text-align:center; padding:50px 20px; color:var(--muted); }
+.grid-empty .ei { font-size:40px; margin-bottom:10px; }
 
 /* PRODUCT CARD */
-.card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  overflow: hidden;
-  transition: all 0.25s;
-  display: flex;
-  flex-direction: column;
-}
+.card { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; transition:all .25s; display:flex; flex-direction:column; animation:fadeUp .4s ease both; }
+.card:hover { transform:translateY(-4px); border-color:rgba(240,165,0,.25); box-shadow:0 12px 30px rgba(0,0,0,.35); }
+.card:nth-child(1){animation-delay:.1s}.card:nth-child(2){animation-delay:.15s}.card:nth-child(3){animation-delay:.2s}.card:nth-child(4){animation-delay:.25s}.card:nth-child(5){animation-delay:.3s}.card:nth-child(6){animation-delay:.35s}
+.card-img { position:relative; height:140px; background:var(--surface2); overflow:hidden; }
+.card-img img { width:100%; height:100%; object-fit:cover; transition:transform .4s; }
+.card:hover .card-img img { transform:scale(1.07); }
+.fav-btn { position:absolute; top:8px; right:8px; width:30px; height:30px; background:rgba(10,11,15,.75); border:1px solid rgba(255,255,255,.1); border-radius:7px; cursor:pointer; display:grid; place-items:center; font-size:13px; transition:all .2s; color:var(--muted); z-index:2; backdrop-filter:blur(6px); }
+.fav-btn:hover { background:rgba(255,71,87,.2); color:var(--red); }
+.fav-btn.liked { color:var(--red); background:rgba(255,71,87,.15); border-color:rgba(255,71,87,.3); }
+.card-body { padding:12px; flex:1; display:flex; flex-direction:column; }
+.card .name  { font-family:'Syne',sans-serif; font-size:13px; font-weight:600; margin-bottom:5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.card .price { font-size:16px; font-weight:700; color:var(--green); margin-bottom:5px; }
+.card .desc  { font-size:10px; color:var(--muted); margin-bottom:6px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.stock-tag { display:inline-flex; align-items:center; gap:4px; font-size:10px; font-weight:500; padding:2px 8px; border-radius:20px; margin-bottom:10px; }
+.instock  { background:rgba(34,211,165,.1); color:var(--green); border:1px solid rgba(34,211,165,.2); }
+.outstock { background:rgba(255,71,87,.1);   color:var(--red);   border:1px solid rgba(255,71,87,.2); }
+.qty-row { display:flex; align-items:center; gap:7px; margin-bottom:8px; }
+.qty-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+.qty-input { width:55px; padding:6px 8px; background:var(--surface2); border:1px solid var(--border); border-radius:7px; color:var(--text); font-size:12px; text-align:center; outline:none; transition:border-color .2s; }
+.qty-input:focus { border-color:var(--accent); }
+.add-btn { width:100%; padding:9px; background:linear-gradient(135deg,var(--accent),var(--accent2)); border:none; border-radius:9px; color:#fff; font-family:'Outfit',sans-serif; font-size:12px; font-weight:600; cursor:pointer; transition:opacity .2s,transform .15s; display:flex; align-items:center; justify-content:center; gap:5px; margin-top:auto; }
+.add-btn:hover { opacity:.88; transform:translateY(-1px); }
+.add-btn:disabled { background:var(--surface2); color:var(--muted); cursor:not-allowed; transform:none; }
 
-.card:hover {
-  transform: translateY(-5px);
-  border-color: rgba(240,165,0,0.25);
-  box-shadow: 0 14px 35px rgba(0,0,0,0.35);
-}
+/* ── MAGIC BUBBLE ── */
+.bubble-pulse { position:fixed; right:28px; bottom:36px; width:56px; height:56px; border-radius:50%; border:2px solid rgba(167,139,250,.55); z-index:998; pointer-events:none; animation:bubblePulse 2s ease-out infinite; }
+@keyframes bubblePulse { 0%{transform:scale(1);opacity:1} 100%{transform:scale(2.1);opacity:0} }
 
-.card-img {
-  position: relative;
-  height: 150px;
-  background: var(--surface2);
-  overflow: hidden;
-}
+.bubble-btn { position:fixed; right:28px; bottom:36px; width:56px; height:56px; border-radius:50%; background:linear-gradient(135deg,#a78bfa,#7c3aed); border:none; cursor:pointer; color:#fff; font-size:20px; z-index:999; box-shadow:0 4px 24px rgba(167,139,250,.45); transition:transform .2s; display:flex; align-items:center; justify-content:center; }
+.bubble-btn:hover { transform:scale(1.1); }
+.bubble-badge { position:absolute; top:-3px; right:-3px; width:19px; height:19px; border-radius:50%; background:var(--green); color:#000; font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center; border:2px solid var(--bg); }
+.bubble-btn.hidden,.bubble-pulse.hidden { display:none; }
 
-.card-img img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.4s;
-}
+/* ── MAGIC PANEL ── */
+.magic-panel { position:fixed; right:0; top:0; width:330px; height:100vh; background:var(--surface); border-left:1px solid var(--border); display:flex; flex-direction:column; z-index:1100; transform:translateX(100%); transition:transform .38s cubic-bezier(.22,1,.36,1); overflow:hidden; }
+.magic-panel.open { transform:translateX(0); }
 
-.card:hover .card-img img { transform: scale(1.07); }
+.mp-header { padding:16px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; background:var(--surface); }
+.mp-header-left { display:flex; align-items:center; gap:10px; }
+.mp-icon { width:38px; height:38px; border-radius:10px; background:rgba(167,139,250,.15); display:flex; align-items:center; justify-content:center; font-size:19px; }
+.mp-title { font-family:'Syne',sans-serif; font-size:15px; font-weight:700; color:var(--text); }
+.mp-sub { font-size:10px; color:var(--muted); margin-top:2px; display:flex; align-items:center; gap:5px; }
+.live-dot { width:6px; height:6px; border-radius:50%; background:var(--green); display:inline-block; flex-shrink:0; animation:liveBlink 1.2s ease-in-out infinite; }
+@keyframes liveBlink { 0%,100%{opacity:1} 50%{opacity:.25} }
+.mp-close { width:30px; height:30px; border-radius:8px; background:rgba(255,255,255,.05); border:1px solid var(--border); color:var(--muted); font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .2s; }
+.mp-close:hover { background:rgba(255,71,87,.12); color:var(--red); border-color:rgba(255,71,87,.3); }
 
-.card-body {
-  padding: 14px;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
+#dash-map { height:210px; width:100%; flex-shrink:0; }
 
-.card .name {
-  font-family: 'Syne', sans-serif;
-  font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 6px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+.mp-body { flex:1; overflow-y:auto; padding:14px 14px 80px; }
+.mp-body::-webkit-scrollbar { width:0; }
 
-.card .price {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--green);
-  margin-bottom: 6px;
-  font-variant-numeric: tabular-nums;
-}
+/* Order card inside panel */
+.mp-order-card { background:var(--surface2); border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:12px; transition:border-color .2s; }
+.mp-order-card:hover { border-color:rgba(167,139,250,.2); }
+.mp-order-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.mp-order-num { font-family:'Syne',sans-serif; font-size:12px; font-weight:700; color:var(--text); }
+.mp-pill { font-size:10px; font-weight:600; padding:3px 10px; border-radius:20px; }
+.pill-amber  { background:rgba(240,165,0,.12);   color:var(--accent); border:1px solid rgba(240,165,0,.25); }
+.pill-purple { background:rgba(167,139,250,.12); color:var(--purple); border:1px solid rgba(167,139,250,.25); }
+.pill-green  { background:rgba(34,211,165,.12);  color:var(--green);  border:1px solid rgba(34,211,165,.25); }
+.mp-product { font-size:13px; color:var(--text); margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mp-addr    { font-size:11px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
-.stock-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  font-weight: 500;
-  padding: 3px 9px;
-  border-radius: 20px;
-  margin-bottom: 12px;
-}
+/* Rider row */
+.mp-rider-row { display:flex; align-items:center; gap:8px; margin-top:10px; padding-top:10px; border-top:1px solid var(--border); }
+.mp-rider-icon { width:32px; height:32px; border-radius:9px; background:rgba(167,139,250,.15); display:flex; align-items:center; justify-content:center; font-size:15px; flex-shrink:0; }
+.mp-rider-info { flex:1; min-width:0; }
+.mp-rider-name { font-size:12px; font-weight:600; color:var(--text); }
+.mp-rider-sub  { font-size:10px; color:var(--muted); margin-top:1px; }
+.mp-call { display:flex; align-items:center; gap:4px; padding:6px 10px; font-size:11px; font-weight:600; background:rgba(34,211,165,.1); color:var(--green); border:1px solid rgba(34,211,165,.25); border-radius:8px; text-decoration:none; flex-shrink:0; transition:all .2s; }
+.mp-call:hover { background:rgba(34,211,165,.2); }
 
-.instock {
-  background: rgba(34,211,165,0.1);
-  color: var(--green);
-  border: 1px solid rgba(34,211,165,0.2);
-}
+/* OTP box */
+.mp-otp { margin-top:10px; padding:10px 12px; background:rgba(240,165,0,.06); border:1px dashed rgba(240,165,0,.28); border-radius:10px; display:flex; align-items:center; justify-content:space-between; }
+.mp-otp-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-bottom:3px; }
+.mp-otp-val   { font-family:'Syne',sans-serif; font-size:22px; font-weight:800; color:var(--accent); letter-spacing:.18em; }
 
-.outstock {
-  background: rgba(255,71,87,0.1);
-  color: var(--red);
-  border: 1px solid rgba(255,71,87,0.2);
-}
+/* Steps */
+.mp-steps { margin-top:14px; display:flex; flex-direction:column; }
+.mp-step { display:flex; align-items:center; gap:9px; font-size:11px; padding:5px 0; position:relative; }
+.mp-step:not(:last-child)::after { content:''; position:absolute; left:8px; top:21px; width:1px; height:15px; background:var(--border); }
+.mp-dot { width:18px; height:18px; border-radius:50%; flex-shrink:0; border:1px solid var(--border); background:var(--surface); }
+.step-done   .mp-dot { background:rgba(34,211,165,.15); border-color:rgba(34,211,165,.45); }
+.step-done   span    { color:var(--green); }
+.step-active .mp-dot { background:rgba(167,139,250,.15); border-color:rgba(167,139,250,.55); animation:dotPulse 1.4s ease-in-out infinite; }
+.step-active span    { color:var(--purple); }
+.step-idle   span    { color:var(--muted); }
+@keyframes dotPulse { 0%,100%{box-shadow:0 0 0 0 rgba(167,139,250,.45)} 50%{box-shadow:0 0 0 5px rgba(167,139,250,0)} }
 
-.qty-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.qty-label {
-  font-size: 11px;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.qty-input {
-  width: 60px;
-  padding: 7px 10px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text);
-  font-family: 'Outfit', sans-serif;
-  font-size: 13px;
-  text-align: center;
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-.qty-input:focus { border-color: var(--accent); }
-
-.add-btn {
-  width: 100%;
-  padding: 10px;
-  background: linear-gradient(135deg, var(--accent), var(--accent2));
-  border: none;
-  border-radius: 10px;
-  color: #fff;
-  font-family: 'Outfit', sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity 0.2s, transform 0.15s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  margin-top: auto;
-}
-
-.add-btn:hover { opacity: 0.88; transform: translateY(-1px); }
-.add-btn:active { transform: translateY(0); }
-.add-btn:disabled {
-  background: var(--surface2);
-  color: var(--muted);
-  cursor: not-allowed;
-  transform: none;
-}
-
-/* FLOATING CART */
-#floating-cart {
-  position: fixed;
-  bottom: 28px; right: 28px;
-  background: linear-gradient(135deg, var(--accent), var(--accent2));
-  color: #fff;
-  width: 56px; height: 56px;
-  border-radius: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  cursor: pointer;
-  box-shadow: 0 8px 24px rgba(240,165,0,0.35);
-  transition: transform 0.2s;
-  z-index: 999;
-}
-
-#floating-cart:hover { transform: scale(1.08); }
-
-.cart-badge {
-  position: absolute;
-  top: -6px; right: -6px;
-  background: var(--red);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 700;
-  width: 22px; height: 22px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  border: 2px solid var(--bg);
-}
+/* Empty state */
+.mp-empty { text-align:center; padding:48px 20px; color:var(--muted); font-size:13px; line-height:1.65; }
+.mp-empty-icon { font-size:44px; margin-bottom:12px; }
 
 /* TOAST */
-#toast {
-  position: fixed;
-  bottom: 100px; right: 28px;
-  background: var(--surface2);
-  border: 1px solid rgba(34,211,165,0.3);
-  color: var(--green);
-  padding: 12px 20px;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 500;
-  display: none;
-  align-items: center;
-  gap: 8px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
-  z-index: 1000;
-  animation: slideUp 0.3s ease;
-}
+#toast     { position:fixed; bottom:80px; right:80px; background:var(--surface2); border:1px solid rgba(34,211,165,.3);  color:var(--green); padding:11px 18px; border-radius:11px; font-size:13px; font-weight:500; display:none; align-items:center; gap:7px; box-shadow:0 8px 24px rgba(0,0,0,.3); z-index:2000; }
+#toast-fav { position:fixed; bottom:120px; right:80px; background:var(--surface2); border:1px solid rgba(255,71,87,.3);   color:var(--red);   padding:11px 18px; border-radius:11px; font-size:13px; font-weight:500; display:none; align-items:center; gap:7px; box-shadow:0 8px 24px rgba(0,0,0,.3); z-index:2000; }
 
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-/* ANIMATIONS */
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(14px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-.hero { animation: fadeUp 0.4s ease 0.05s both; }
-
-.card {
-  animation: fadeUp 0.4s ease both;
-}
-
-.card:nth-child(1) { animation-delay: 0.1s; }
-.card:nth-child(2) { animation-delay: 0.15s; }
-.card:nth-child(3) { animation-delay: 0.2s; }
-.card:nth-child(4) { animation-delay: 0.25s; }
-.card:nth-child(5) { animation-delay: 0.3s; }
-.card:nth-child(6) { animation-delay: 0.35s; }
-
-.nav {
-    background: rgba(10,10,10,0.92);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-bottom: 1px solid rgba(255,255,255,0.06);
-    padding: 0 2rem;
-    height: 60px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-  }
-.brand { display: flex; align-items: center; gap: 12px; }
- .brand-logo {
-    width: 200px; height: 36px; border-radius: 10px;
-    background: linear-gradient(135deg, #f59e0b, #d97706);
-    display: flex; align-items: center; justify-content: center;
-  }
-  .brand-logo img { width: 200px; height: 150px; object-fit: contain; }
-  .brand-name { font-size: 16px; font-weight: 600; color: #f0ede6; letter-spacing: -0.01em; }
-  .nav-right { display: flex; align-items: center; gap: 16px; }
-  .nav-pill {
-    font-size: 11px; font-weight: 500; letter-spacing: 0.06em;
-    padding: 5px 12px; border-radius: 99px;
-    border: 1px solid rgba(245,158,11,0.3);
-    color: #f59e0b;
-  }
-.description{
-font-size:11px;
-font-weight:400;   /* not bold */
-color:var(--muted);
-margin-bottom:6px;
-
-display:-webkit-box;
--webkit-line-clamp:2;
--webkit-box-orient:vertical;
-overflow:hidden;
-}
+@keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
 </style>
 </head>
 <body>
 
-<!-- SIDEBAR -->
+<!-- ── SIDEBAR ── -->
 <div class="sidebar">
-
   <div class="profile-block">
     <div class="avatar-wrap">
-    {% if user.profile_pic %}
-<img src="{{ url_for('static', filename='profile_pic/' + user.profile_pic) }}" alt="Profile">
-{% else %}
-<img src="{{ url_for('static', filename='images/default.png') }}" alt="Profile">
-{% endif %}
-      <div class="online"></div>
+      {% if user and user.profile_pic %}
+        <img src="{{ url_for('static', filename='profile_pic/' + user.profile_pic) }}" alt="avatar">
+      {% else %}
+        <div class="avatar-placeholder">👤</div>
+      {% endif %}
+      <div class="online-dot"></div>
     </div>
     <div class="profile-info">
-      <h4>{{ session['user_name'] }}</h4>
-	
+      <h4>{{ session.get('user_name', 'User') }}</h4>
       <p>Customer</p>
     </div>
   </div>
 
   <div class="nav-block">
     <div class="nav-label">Menu</div>
-
-    <button class="nav-btn active" onclick="location.href='/user_dashboard'">
-      <div class="ni"><i class="fa fa-home"></i></div>
-      Home
-    </button>
-
-    <button class="nav-btn" onclick="location.href='/cart'">
-      <div class="ni"><i class="fa fa-shopping-cart"></i></div>
-      Cart
-    </button>
-
-    <button class="nav-btn" onclick="location.href='/my_orders'">
-      <div class="ni"><i class="fa fa-box"></i></div>
-      My Orders
-    </button>
-
-    <button class="nav-btn" onclick="location.href='/profile'">
-      <div class="ni"><i class="fa fa-user"></i></div>
-      Profile
-    </button>
+    <a class="nav-btn active" href="/user_dashboard"><div class="ni"><i class="fa fa-home"></i></div> Home</a>
+    <a class="nav-btn" href="/cart">
+      <div class="ni"><i class="fa fa-shopping-cart"></i></div> Cart
+      <span style="margin-left:auto;background:var(--accent);color:#000;font-size:10px;font-weight:700;padding:1px 7px;border-radius:20px;">{{ cart_count }}</span>
+    </a>
+    <a class="nav-btn" href="/my_orders"><div class="ni"><i class="fa fa-box"></i></div> My Orders</a>
+    <button class="nav-btn" id="nav-fav" onclick="switchTab('favorites')"><div class="ni"><i class="fa fa-heart"></i></div> Favourites</button>
+    <a class="nav-btn" href="/profile"><div class="ni"><i class="fa fa-user"></i></div> Profile</a>
+    <a class="nav-btn" href="/addresses"><div class="ni"><i class="fa fa-map-marker-alt"></i></div> Addresses</a>
   </div>
 
   <div class="cats-block">
     <div class="nav-label">Categories</div>
-
-    <button class="cat-btn" onclick="location.href='/user_dashboard'">
-      <span class="emoji">🛍</span> All Products
-    </button>
-    <button class="cat-btn" onclick="location.href='/user_dashboard?category=vegetables'">
-      <span class="emoji">🥦</span> Vegetables
-    </button>
-    <button class="cat-btn" onclick="location.href='/user_dashboard?category=fruits'">
-      <span class="emoji">🍎</span> Fruits
-    </button>
-    <button class="cat-btn" onclick="location.href='/user_dashboard?category=dairy'">
-      <span class="emoji">🥛</span> Dairy
-    </button>
-    <button class="cat-btn" onclick="location.href='/user_dashboard?category=snacks'">
-      <span class="emoji">🍪</span> Snacks
-    </button>
-    <button class="cat-btn" onclick="location.href='/user_dashboard?category=drinks'">
-      <span class="emoji">🥤</span> Drinks
-    </button>
-    <button class="cat-btn" onclick="location.href='/user_dashboard?category=groceries'">
-      <span class="emoji">🛒</span> Groceries
-    </button>
+    
+    <a class="cat-btn" href="/user_dashboard?category=vegetables"><span class="emoji">🥦</span> Vegetables</a>
+    <a class="cat-btn" href="/user_dashboard?category=fruits"><span class="emoji">🍎</span> Fruits</a>
+    <a class="cat-btn" href="/user_dashboard?category=dairy"><span class="emoji">🥛</span> Dairy</a>
+    <a class="cat-btn" href="/user_dashboard?category=snacks"><span class="emoji">🍪</span> Snacks</a>
+    <a class="cat-btn" href="/user_dashboard?category=drinks"><span class="emoji">🥤</span> Drinks</a>
+    <a class="cat-btn" href="/user_dashboard?category=groceries"><span class="emoji">🛒</span> Groceries</a>
   </div>
 
   <div class="sidebar-footer">
-    <button class="logout-btn" onclick="location.href='/logout'">
-      <i class="fa fa-sign-out-alt"></i> Logout
-    </button>
+    <a class="logout-btn" href="/logout"><i class="fa fa-sign-out-alt"></i> Logout</a>
   </div>
-
 </div>
 
-<!-- MAIN -->
+<!-- ── MAIN ── -->
 <div class="main">
 
   <!-- TOPBAR -->
   <div class="topbar">
-
-
-    <nav class="nav">
-  <div class="brand">
-    <div class="brand-logo">
-      <img src="/static/images/ravi_mart_logo.png" alt="Ravi Mart">
-    </div>
-    <span class="brand-name"></span>
-  </div>
-  <div class="nav-right">
-    <div class="nav-dot"></div>
-    <div class="nav-pill">Est. 2026</div>
-  </div>
-</nav>
-
+    <span class="logo">🛒 Ravi Mart</span>
     <form class="search-form" method="GET" action="/user_dashboard">
-      <input type="text"
-             name="search"
-             placeholder="Search fresh produce, snacks, drinks…"
-             value="{{ request.args.get('search','') }}">
+      <input type="text" name="search" placeholder="Search products…" value="{{ request.args.get('search','') }}">
       <button type="submit"><i class="fa fa-search"></i></button>
     </form>
-
-    <div class="topbar-actions">
-      <a href="/cart" class="cart-btn">
-        <i class="fa fa-shopping-cart"></i>
-        Cart
-        <div class="cart-chip cart-badge-top">{{ cart_count }}</div>
-      </a>
-    </div>
-
-	
-
+    <a href="/cart" class="cart-btn">
+      <i class="fa fa-shopping-cart"></i> Cart
+      <div class="cart-chip cart-badge-top">{{ cart_count }}</div>
+    </a>
   </div>
 
   <!-- CONTENT -->
@@ -815,105 +321,462 @@ overflow:hidden;
     <div class="hero">
       <div class="hero-text">
         <h2>Fresh groceries,<br><span>delivered fast 🚀</span></h2>
-        <p>Quality produce, pantry staples & more — straight to your door.</p>
+        <p>Quality produce, pantry staples & more.</p>
       </div>
       <div class="hero-emoji">🛒</div>
     </div>
 
-    <!-- PRODUCTS -->
-    <div class="sec-header">
-      <h2>All Products</h2>
-      <span class="count-pill">{{ products | length }} items</span>
+    <!-- STATS -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Total Orders</div>
+        <div class="stat-val accent">{{ total_orders }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Addresses</div>
+        <div class="stat-val purple">{{ address_count }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total Spent</div>
+        <div class="stat-val green">₹{{ "%.0f"|format(total_spent) }}</div>
+      </div>
     </div>
 
-    <div class="grid">
+    <!-- COUPON BANNER -->
+    <div class="coupon-banner">
+      <div class="coupon-banner-left">
+        <div class="coupon-icon">🎟️</div>
+        <div class="coupon-banner-text">
+          <h3>Got a coupon code?</h3>
+          <p>Apply it at checkout to save on your order instantly.</p>
+        </div>
+      </div>
+      <button class="coupon-toggle-btn" onclick="openCoupons()">
+        <i class="fa fa-ticket-alt"></i> View Coupons
+      </button>
+    </div>
+
+    <!-- COUPON PANEL -->
+    <div class="coupon-panel" id="coupon-panel">
+      <div class="coupon-panel-header">
+        <h3>🎟️ Your Coupons</h3>
+        <button class="coupon-close" onclick="closeCoupons()"><i class="fa fa-times"></i></button>
+      </div>
+      <div class="coupon-input-row">
+        <input class="coupon-input" id="coupon-code-input" type="text" placeholder="ENTER CODE (e.g. SAVE20)">
+        <button class="coupon-apply-btn" onclick="applyCouponFromInput()">Apply</button>
+      </div>
+      <div class="coupon-msg" id="coupon-msg"></div>
+      <div class="coupon-cards" id="coupon-cards"></div>
+    </div>
+
+    <!-- TAB SWITCHER -->
+    <div class="tab-row">
+      <button class="tab-btn active" id="tab-all" onclick="switchTab('all')"><i class="fa fa-th-large"></i> All Products</button>
+      <button class="tab-btn" id="tab-fav" onclick="switchTab('favorites')"><i class="fa fa-heart"></i> Favourites <span id="fav-count-tab"></span></button>
+    </div>
+
+    <!-- SECTION HEADER -->
+    <div class="sec-header">
+      <h2 id="section-title">All Products</h2>
+      <span class="count-pill" id="item-count">{{ products|length }} items</span>
+    </div>
+
+    <!-- PRODUCT GRID -->
+    <div class="grid" id="products-grid">
       {% for product in products %}
-      <div class="card">
+      <div class="card" data-id="{{ product.id }}" data-name="{{ product.name }}" data-price="{{ product.price }}">
         <div class="card-img">
           <img src="{{ url_for('static', filename=product.image) }}" alt="{{ product.name }}">
+          <button class="fav-btn" onclick="toggleFav(this,'{{ product.id }}','{{ product.name }}')"><i class="fa fa-heart"></i></button>
         </div>
         <div class="card-body">
           <div class="name">{{ product.name }}</div>
           <div class="price">₹{{ product.price }}</div>
-		    <div class="description">{{ product.description }}</div>
-
+          <div class="desc">{{ product.description }}</div>
           {% if product.quantity > 0 %}
-            <span class="stock-tag instock"><i class="fa fa-circle" style="font-size:7px"></i> In Stock ({{ product.quantity }})</span>
-
+            <span class="stock-tag instock"><i class="fa fa-circle" style="font-size:6px"></i> In Stock ({{ product.quantity }})</span>
             <form action="/add_to_cart/{{ product.id }}" method="POST" class="add-to-cart-form">
               <div class="qty-row">
                 <span class="qty-label">Qty</span>
                 <input class="qty-input" type="number" name="qty" value="1" min="1" max="{{ product.quantity }}">
               </div>
-              <button type="submit" class="add-btn">
-                <i class="fa fa-cart-plus"></i> Add to Cart
-              </button>
+              <button type="submit" class="add-btn"><i class="fa fa-cart-plus"></i> Add to Cart</button>
             </form>
-
           {% else %}
-            <span class="stock-tag outstock"><i class="fa fa-circle" style="font-size:7px"></i> Out of Stock</span>
-            <button class="add-btn" disabled>
-              <i class="fa fa-ban"></i> Unavailable
-            </button>
+            <span class="stock-tag outstock"><i class="fa fa-circle" style="font-size:6px"></i> Out of Stock</span>
+            <button class="add-btn" disabled><i class="fa fa-ban"></i> Unavailable</button>
           {% endif %}
         </div>
       </div>
       {% endfor %}
     </div>
 
+    <div class="grid-empty" id="fav-empty" style="display:none;">
+      <div class="ei">💔</div>
+      <p>No favourites yet. Tap ❤️ on any product.</p>
+    </div>
+
+  </div><!-- end .content -->
+</div><!-- end .main -->
+
+<!-- ── MAGIC BUBBLE ── -->
+<div class="bubble-pulse" id="bubblePulse"></div>
+<button class="bubble-btn" id="bubbleBtn" onclick="toggleMagicPanel()">
+  <i class="fa fa-truck"></i>
+  <div class="bubble-badge" id="orderBadge">{{ active_orders|length }}</div>
+</button>
+
+<!-- ── MAGIC PANEL ── -->
+<div class="magic-panel" id="magicPanel">
+
+  <div class="mp-header">
+    <div class="mp-header-left">
+      <div class="mp-icon">🚚</div>
+      <div>
+        <div class="mp-title">Live Tracking</div>
+        <div class="mp-sub"><span class="live-dot"></span> Updating every 4s</div>
+      </div>
+    </div>
+    <button class="mp-close" onclick="toggleMagicPanel()">✕</button>
   </div>
-</div>
 
-<!-- FLOATING CART -->
+  <!-- MAP renders here -->
+  <div id="dash-map"></div>
 
-<!--<div id="floating-cart" onclick="window.location.href='/cart'">
+  <div class="mp-body" id="mpBody">
+    {% if active_orders %}
+      {% for o in active_orders %}
+      <div class="mp-order-card">
 
-<div id="floating-cart" onclick="window.location.href='/cart'">
->>>>>>> 28ad25c (new mail)
-  <i class="fa fa-shopping-cart"></i>
-  <span class="cart-badge">{{ cart_count }}</span>
-</div>
+        <div class="mp-order-top">
+          <span class="mp-order-num">#{{ o.order_number }}</span>
+          {% if o.status == 'Delivered' %}
+            <span class="mp-pill pill-green">Delivered</span>
+          {% elif o.status in ['Out for Delivery','Picked'] %}
+            <span class="mp-pill pill-purple">{{ o.status }}</span>
+          {% else %}
+            <span class="mp-pill pill-amber">{{ o.status or 'Pending' }}</span>
+          {% endif %}
+        </div>
 
-<!-- TOAST -->
+        <div class="mp-product">{{ o.product_name }}</div>
+        <div class="mp-addr">{{ o.customer_address or '—' }}</div>
+
+        {% if o.rider_name %}
+        <div class="mp-rider-row">
+          <div class="mp-rider-icon">🚴</div>
+          <div class="mp-rider-info">
+            <div class="mp-rider-name">{{ o.rider_name }}</div>
+            <div class="mp-rider-sub">En route to you</div>
+          </div>
+          {% if o.rider_phone %}
+          <a class="mp-call" href="tel:{{ o.rider_phone }}">
+            <i class="fa fa-phone" style="font-size:10px"></i> Call
+          </a>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        {% if o.delivery_otp %}
+        <div class="mp-otp">
+          <div>
+            <div class="mp-otp-label">Delivery OTP</div>
+            <div class="mp-otp-val">{{ o.delivery_otp }}</div>
+          </div>
+          <div style="font-size:10px;color:var(--muted);text-align:right;line-height:1.5">Share only<br>with rider</div>
+        </div>
+        {% endif %}
+
+        <!-- Progress steps -->
+        <div class="mp-steps">
+          <div class="mp-step {% if o.status not in ['','None'] %}step-done{% else %}step-active{% endif %}">
+            <div class="mp-dot"></div><span>Order placed</span>
+          </div>
+          <div class="mp-step
+            {% if o.status in ['Assigned','Accepted','Picked','Out for Delivery','Delivered'] %}step-done
+            {% elif o.status == 'Pending' %}step-active
+            {% else %}step-idle{% endif %}">
+            <div class="mp-dot"></div><span>Rider assigned</span>
+          </div>
+          <div class="mp-step
+            {% if o.status in ['Picked','Out for Delivery','Delivered'] %}step-done
+            {% elif o.status in ['Assigned','Accepted'] %}step-active
+            {% else %}step-idle{% endif %}">
+            <div class="mp-dot"></div><span>Picked from store</span>
+          </div>
+          <div class="mp-step
+            {% if o.status == 'Delivered' %}step-done
+            {% elif o.status == 'Out for Delivery' %}step-active
+            {% else %}step-idle{% endif %}">
+            <div class="mp-dot"></div><span>Out for delivery</span>
+          </div>
+          <div class="mp-step {% if o.status == 'Delivered' %}step-done{% else %}step-idle{% endif %}">
+            <div class="mp-dot"></div><span>Delivered ✓</span>
+          </div>
+        </div>
+
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="mp-empty">
+        <div class="mp-empty-icon">📦</div>
+        <p>No active deliveries right now.<br>Place an order to track it here.</p>
+      </div>
+    {% endif %}
+  </div><!-- end mp-body -->
+
+</div><!-- end magic-panel -->
+
+<!-- TOASTS -->
 <div id="toast"><i class="fa fa-check-circle"></i> Added to cart!</div>
+<div id="toast-fav"><i class="fa fa-heart"></i> <span id="toast-fav-msg"></span></div>
 
 <script>
-document.querySelectorAll(".add-to-cart-form").forEach(form => {
-  form.addEventListener("submit", function(e) {
-    e.preventDefault();
-    const url = this.action;
-    const formData = new FormData(this);
+/* ════════════════════════════════
+   COUPONS
+════════════════════════════════ */
+function openCoupons()  { document.getElementById('coupon-panel').classList.add('open'); }
+function closeCoupons() { document.getElementById('coupon-panel').classList.remove('open'); }
 
-    fetch(url, { method: "POST", body: formData })
-      .then(res => res.json())
+function applyCouponFromInput() {
+  const code = document.getElementById('coupon-code-input').value.trim().toUpperCase();
+  const msg  = document.getElementById('coupon-msg');
+  if (!code) { msg.className='coupon-msg error'; msg.textContent='Please enter a coupon code.'; return; }
+  msg.className='coupon-msg success'; msg.textContent='✅ Coupon ' + code + ' noted! Discount applied at checkout.';
+}
+
+const COUPONS = [
+  {code:'SAVE20',   desc:'20% off on orders above ₹500',      save:'Save up to ₹100'},
+  {code:'WELCOME10',desc:'Flat ₹10 off for new users',         save:'Save ₹10'},
+  {code:'FRESH50',  desc:'₹50 off on fruits & vegetables',     save:'Save ₹50'},
+  {code:'FREEDEL',  desc:'Free delivery on orders above ₹299', save:'Free Delivery'},
+];
+
+(function renderCoupons(){
+  const wrap = document.getElementById('coupon-cards');
+  COUPONS.forEach(c => {
+    const d = document.createElement('div');
+    d.className = 'coupon-card';
+    d.innerHTML = `<div class="c-code">${c.code}</div><div class="c-desc">${c.desc}</div><div class="c-save">${c.save}</div><div class="c-tag">Coupon</div>`;
+    d.onclick = () => { document.getElementById('coupon-code-input').value = c.code; applyCouponFromInput(); };
+    wrap.appendChild(d);
+  });
+})();
+
+/* ════════════════════════════════
+   FAVOURITES
+════════════════════════════════ */
+let favourites = JSON.parse(localStorage.getItem('rm_favourites') || '[]');
+function saveFavs() { localStorage.setItem('rm_favourites', JSON.stringify(favourites)); }
+
+function toggleFav(btn, id, name) {
+  const idx = favourites.indexOf(id);
+  if (idx === -1) { favourites.push(id); btn.classList.add('liked'); showFavToast('❤️ ' + name + ' added'); }
+  else { favourites.splice(idx,1); btn.classList.remove('liked'); showFavToast('💔 ' + name + ' removed'); if(currentTab==='favorites') renderTab('favorites'); }
+  saveFavs(); updateFavCount();
+}
+function updateFavCount() { const el=document.getElementById('fav-count-tab'); if(el) el.textContent=favourites.length?`(${favourites.length})`:''; }
+function showFavToast(msg) { const t=document.getElementById('toast-fav'); document.getElementById('toast-fav-msg').textContent=msg; t.style.display='flex'; setTimeout(()=>t.style.display='none',2200); }
+
+document.querySelectorAll('.card').forEach(c => { if(favourites.includes(c.dataset.id)) c.querySelector('.fav-btn')?.classList.add('liked'); });
+updateFavCount();
+
+/* ════════════════════════════════
+   TABS
+════════════════════════════════ */
+let currentTab = 'all';
+const allCards = Array.from(document.querySelectorAll('.card'));
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('tab-all').classList.toggle('active', tab==='all');
+  document.getElementById('tab-fav').classList.toggle('active', tab==='favorites');
+  document.getElementById('nav-fav').classList.toggle('active', tab==='favorites');
+  renderTab(tab);
+}
+function renderTab(tab) {
+  const empty   = document.getElementById('fav-empty');
+  const countEl = document.getElementById('item-count');
+  const titleEl = document.getElementById('section-title');
+  if (tab === 'all') {
+    allCards.forEach(c => c.style.display='');
+    empty.style.display='none';
+    countEl.textContent = allCards.length + ' items';
+    titleEl.textContent = 'All Products';
+  } else {
+    let shown = 0;
+    allCards.forEach(c => { if(favourites.includes(c.dataset.id)){c.style.display='';shown++;}else c.style.display='none'; });
+    empty.style.display = shown===0 ? 'block' : 'none';
+    countEl.textContent = shown + ' items';
+    titleEl.textContent = '❤️ Favourites';
+  }
+}
+
+/* ════════════════════════════════
+   ADD TO CART — AJAX
+════════════════════════════════ */
+document.querySelectorAll('.add-to-cart-form').forEach(form => {
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    fetch(this.action, {method:'POST', body:new FormData(this)})
+      .then(r => r.json())
       .then(data => {
         if (data.success) {
-          // Update all cart count badges
-          document.querySelectorAll(".cart-badge, .cart-badge-top").forEach(b => {
-            b.textContent = data.cart_count;
-          });
-
-          // Animate the add button
-          const btn = this.querySelector(".add-btn");
+          document.querySelectorAll('.cart-badge,.cart-badge-top').forEach(b => b.textContent=data.cart_count);
+          const btn = this.querySelector('.add-btn');
           btn.innerHTML = '<i class="fa fa-check"></i> Added!';
-          btn.style.background = 'rgba(34,211,165,0.15)';
-          btn.style.color = '#22d3a5';
-          btn.style.border = '1px solid rgba(34,211,165,0.3)';
-          setTimeout(() => {
-            btn.innerHTML = '<i class="fa fa-cart-plus"></i> Add to Cart';
-            btn.style.background = '';
-            btn.style.color = '';
-            btn.style.border = '';
-          }, 1800);
-
-          // Show toast
-          const toast = document.getElementById("toast");
-          toast.style.display = "flex";
-          setTimeout(() => toast.style.display = "none", 2000);
+          btn.style.cssText = 'background:rgba(34,211,165,.15);color:#22d3a5;border:1px solid rgba(34,211,165,.3)';
+          setTimeout(() => { btn.innerHTML='<i class="fa fa-cart-plus"></i> Add to Cart'; btn.style.cssText=''; }, 1800);
+          const t = document.getElementById('toast'); t.style.display='flex'; setTimeout(()=>t.style.display='none',2000);
         }
       });
   });
 });
+
+/* ════════════════════════════════
+   MAP & LIVE TRACKING
+════════════════════════════════ */
+const STORE_LAT  = 17.440894, STORE_LNG = 78.444348;
+const activeOrders = {{ active_orders | tojson }};
+
+let dashMap        = null;
+let mapInitialized = false;
+let riderMarkers   = {};
+let riderRoutes    = {};
+let riderPositions = {};
+let pollTimer      = null;
+
+function markerIcon(color, emoji) {
+  return L.divIcon({
+    className: '',
+    html: `<div style="width:32px;height:32px;border-radius:50%;background:${color};border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:15px;box-shadow:0 2px 10px rgba(0,0,0,.5);">${emoji}</div>`,
+    iconSize:[32,32], iconAnchor:[16,16]
+  });
+}
+
+function drawRoute(fromLat, fromLng, toLat, toLng, color, weight, opacity) {
+  return new Promise(resolve => {
+    fetch(`https://router.project-osrm.org/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=full&geometries=geojson`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.routes && data.routes.length) {
+          const coords = data.routes[0].geometry.coordinates.map(([ln,lt]) => [lt,ln]);
+          resolve(L.polyline(coords, {color, weight, opacity}).addTo(dashMap));
+        } else resolve(null);
+      })
+      .catch(() => resolve(null));
+  });
+}
+
+function animateMarker(marker, fromLat, fromLng, toLat, toLng, ms) {
+  const start = performance.now();
+  const dLat = toLat - fromLat, dLng = toLng - fromLng;
+  function step(now) {
+    const t    = Math.min((now - start) / ms, 1);
+    const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+    marker.setLatLng([fromLat + dLat*ease, fromLng + dLng*ease]);
+    if (t < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function initMap() {
+  if (mapInitialized) return;
+  mapInitialized = true;
+
+  dashMap = L.map('dash-map', {zoomControl:true, attributionControl:false})
+    .setView([STORE_LAT, STORE_LNG], 12);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(dashMap);
+
+  /* Store marker */
+  L.marker([STORE_LAT, STORE_LNG], {icon: markerIcon('#f0a500','🏪')})
+    .addTo(dashMap).bindPopup('<b>🏪 Ravi Mart Store</b>');
+
+  /* Initial order markers */
+  activeOrders.forEach(o => {
+    if (o.customer_lat && o.customer_lng) {
+      L.marker([o.customer_lat, o.customer_lng], {icon: markerIcon('#22d3a5','🏠')})
+        .addTo(dashMap)
+        .bindPopup(`<b>${o.product_name}</b><br>Status: ${o.status}<br>#${o.order_number}`);
+      drawRoute(STORE_LAT, STORE_LNG, o.customer_lat, o.customer_lng, '#f0a500', 4, 0.7);
+    }
+    if (o.rider_lat && o.rider_lng) {
+      L.marker([o.rider_lat, o.rider_lng], {icon: markerIcon('#a78bfa','🚴')})
+        .addTo(dashMap)
+        .bindPopup(`🚴 ${o.rider_name || 'Rider'} — En route`);
+      if (o.customer_lat && o.customer_lng)
+        drawRoute(o.rider_lat, o.rider_lng, o.customer_lat, o.customer_lng, '#a78bfa', 4, 0.85);
+    }
+  });
+
+  /* Start live rider polling */
+  pollRiderLocations();
+  pollTimer = setInterval(pollRiderLocations, 4000);
+}
+
+function updateRiderOnMap(r) {
+  if (r.lat == null || r.lng == null) return;
+  const key  = String(r.id);
+  const prev = riderPositions[key];
+
+  if (!riderMarkers[key]) {
+    riderMarkers[key] = L.marker([r.lat, r.lng], {icon: markerIcon('#a78bfa','🚴')})
+      .addTo(dashMap).bindPopup('🚴 Your rider is on the way!');
+  }
+
+  if (prev && (prev.lat !== r.lat || prev.lng !== r.lng)) {
+    animateMarker(riderMarkers[key], prev.lat, prev.lng, r.lat, r.lng, 2500);
+  } else if (!prev) {
+    riderMarkers[key].setLatLng([r.lat, r.lng]);
+  }
+
+  riderPositions[key] = {lat: r.lat, lng: r.lng};
+
+  if (r.customer_lat && r.customer_lng) {
+    const moved = !prev || Math.abs(prev.lat-r.lat)>0.0003 || Math.abs(prev.lng-r.lng)>0.0003;
+    if (moved) {
+      if (riderRoutes[key]) { dashMap.removeLayer(riderRoutes[key]); riderRoutes[key]=null; }
+      drawRoute(r.lat, r.lng, r.customer_lat, r.customer_lng, '#a78bfa', 4, 0.9)
+        .then(line => { if(riderRoutes[key]) dashMap.removeLayer(riderRoutes[key]); riderRoutes[key]=line; });
+    }
+  }
+}
+
+function pollRiderLocations() {
+  fetch('/get_rider_locations')
+    .then(r => r.json())
+    .then(riders => riders.forEach(updateRiderOnMap))
+    .catch(err => console.warn('Poll error:', err));
+}
+
+/* ════════════════════════════════
+   MAGIC PANEL TOGGLE
+════════════════════════════════ */
+let panelOpen = false;
+
+function toggleMagicPanel() {
+  panelOpen = !panelOpen;
+  document.getElementById('magicPanel').classList.toggle('open', panelOpen);
+
+  if (panelOpen) {
+    /* Wait for CSS slide animation (380ms) then init/resize map */
+    setTimeout(() => {
+      initMap();
+      if (dashMap) dashMap.invalidateSize();
+    }, 420);
+  } else {
+    /* Stop polling when panel is closed to save requests */
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  }
+}
+
+/* ── Hide bubble & pulse if no active orders ── */
+{% if active_orders|length == 0 %}
+  document.getElementById('bubbleBtn').classList.add('hidden');
+  document.getElementById('bubblePulse').classList.add('hidden');
+{% endif %}
 </script>
 </body>
 </html>

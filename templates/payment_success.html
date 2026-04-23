@@ -1,251 +1,429 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>Payment Successful | Ravi Mart</title>
-
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-
 <style>
-
-*{
-margin:0;
-padding:0;
-box-sizing:border-box;
-font-family:'Segoe UI',sans-serif;
+:root {
+  --bg:      #080b0f;
+  --surface: #0f1318;
+  --s2:      #161b22;
+  --border:  rgba(255,255,255,0.07);
+  --accent:  #f0a500;
+  --accent2: #ff6b35;
+  --green:   #22d3a5;
+  --red:     #ff4757;
+  --purple:  #a78bfa;
+  --text:    #eceef2;
+  --muted:   #5a6270;
+}
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Outfit', sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 16px 60px;
 }
 
-body{
-background:#0a0a0a;
-color:#f0ede6;
-display:flex;
-justify-content:center;
-padding:40px 10px;
+/* ── LOGO ── */
+.logo {
+  font-family: 'Syne', sans-serif;
+  font-size: 24px; font-weight: 800;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 28px;
 }
 
-/* MAIN CONTAINER */
+.container { width: 100%; max-width: 640px; display: flex; flex-direction: column; gap: 18px; }
 
-.container{
-width:100%;
-max-width:700px;
+/* ── CARD BASE ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  overflow: hidden;
+  animation: fadeUp 0.5s ease both;
+}
+.card:nth-child(1){animation-delay:.05s}
+.card:nth-child(2){animation-delay:.12s}
+.card:nth-child(3){animation-delay:.19s}
+.card:nth-child(4){animation-delay:.26s}
+
+/* ── SUCCESS HEADER ── */
+.success-header {
+  background: linear-gradient(135deg, #0a1f0f 0%, #0d1f2d 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 36px 32px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.success-header::before {
+  content:'';
+  position:absolute; top:-60px; right:-60px;
+  width:200px; height:200px; border-radius:50%;
+  background: radial-gradient(circle, rgba(34,211,165,0.1), transparent 70%);
+}
+.check-ring {
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  background: rgba(34,211,165,0.1);
+  border: 2px solid rgba(34,211,165,0.3);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 16px;
+  animation: pop 0.6s cubic-bezier(.17,.67,.4,1.3) both;
+}
+.check-ring i { font-size: 32px; color: var(--green); }
+.success-header h1 {
+  font-family: 'Syne', sans-serif;
+  font-size: 24px; font-weight: 800;
+  color: var(--green); margin-bottom: 6px;
+}
+.success-header p { font-size: 14px; color: var(--muted); }
+.order-chip {
+  display: inline-block;
+  margin-top: 14px;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 20px;
+  font-family: 'Syne', sans-serif;
+  font-size: 15px; font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--accent);
 }
 
-/* SUCCESS CARD */
-
-.success-card{
-background:#111;
-padding:40px;
-border-radius:16px;
-border:1px solid rgba(255,255,255,0.07);
-box-shadow:0 10px 30px rgba(0,0,0,0.5);
-text-align:center;
-margin-bottom:25px;
-animation:fadeIn 0.8s ease;
+/* ── RIDER CARD ── */
+.rider-card-inner { padding: 24px; }
+.rider-card-inner .sec-label {
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--muted); margin-bottom: 14px;
 }
 
-.checkmark{
-font-size:70px;
-color:#22c55e;
-margin-bottom:10px;
-animation:pop .6s ease;
+/* Assigned */
+.rider-assigned {
+  display: flex; align-items: center; gap: 16px;
 }
-
-@keyframes pop{
-0%{transform:scale(0)}
-80%{transform:scale(1.2)}
-100%{transform:scale(1)}
+.rider-avatar {
+  width: 52px; height: 52px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #1a2a1a, #0d1f2d);
+  border: 2px solid rgba(34,211,165,0.3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; flex-shrink: 0;
 }
-
-@keyframes fadeIn{
-from{opacity:0;transform:translateY(20px)}
-to{opacity:1;transform:translateY(0)}
+.rider-info h3 {
+  font-family: 'Syne', sans-serif;
+  font-size: 16px; font-weight: 700;
+  margin-bottom: 4px;
 }
-
-.success-card h1{
-color:#22c55e;
-margin-bottom:5px;
+.rider-info .rider-meta {
+  font-size: 12px; color: var(--muted);
+  display: flex; align-items: center; gap: 6px;
 }
-
-.order-number{
-margin-top:10px;
-background:#1f1f1f;
-padding:10px;
-border-radius:6px;
-font-weight:bold;
+.rider-info .rider-meta i { color: var(--green); }
+.call-btn {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 16px;
+  background: rgba(34,211,165,0.1);
+  border: 1px solid rgba(34,211,165,0.25);
+  border-radius: 10px;
+  color: var(--green);
+  font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 600;
+  text-decoration: none; transition: all 0.2s;
+  flex-shrink: 0;
 }
+.call-btn:hover { background: rgba(34,211,165,0.18); }
 
-/* ORDER ITEMS */
-
-.items-card{
-background:#111;
-border-radius:14px;
-border:1px solid rgba(255,255,255,0.07);
-overflow:hidden;
-margin-bottom:20px;
+/* No rider */
+.no-rider {
+  display: flex; align-items: center; gap: 14px;
+  background: rgba(255,71,87,0.06);
+  border: 1px solid rgba(255,71,87,0.15);
+  border-radius: 12px; padding: 16px;
 }
+.no-rider-icon { font-size: 28px; flex-shrink:0; }
+.no-rider-text h4 { font-size: 14px; font-weight: 600; margin-bottom: 4px; color: var(--red); }
+.no-rider-text p  { font-size: 12px; color: var(--muted); }
 
-.item{
-display:flex;
-justify-content:space-between;
-padding:14px 18px;
-border-bottom:1px solid rgba(255,255,255,0.05);
+/* Status steps */
+.steps {
+  display: flex; gap: 0;
+  padding: 20px 24px;
+  border-top: 1px solid var(--border);
 }
-
-.item:last-child{
-border-bottom:none;
+.step {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  position: relative;
 }
-
-.item span{
-font-size:14px;
+.step:not(:last-child)::after {
+  content:'';
+  position: absolute;
+  top: 14px; left: 50%;
+  width: 100%; height: 2px;
+  background: var(--border);
+  z-index: 0;
 }
-
-/* TOTAL */
-
-.total{
-display:flex;
-justify-content:space-between;
-padding:18px;
-font-size:18px;
-font-weight:bold;
-background:#161616;
+.step.done:not(:last-child)::after { background: var(--green); }
+.step-dot {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--s2);
+  border: 2px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; color: var(--muted);
+  z-index: 1; flex-shrink: 0;
+  transition: all 0.3s;
 }
-
-/* DELIVERY */
-
-.delivery{
-background:#0f2d1a;
-border:1px solid #1a5c2e;
-padding:15px;
-border-radius:10px;
-margin-bottom:20px;
-display:flex;
-justify-content:space-between;
-align-items:center;
+.step.done .step-dot {
+  background: rgba(34,211,165,0.15);
+  border-color: var(--green);
+  color: var(--green);
 }
-
-.delivery i{
-color:#4ade80;
+.step.active .step-dot {
+  background: rgba(240,165,0,0.15);
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 0 4px rgba(240,165,0,0.1);
 }
+.step-label { font-size: 10px; color: var(--muted); margin-top: 6px; text-align: center; line-height: 1.3; }
+.step.done .step-label   { color: var(--green); }
+.step.active .step-label { color: var(--accent); font-weight: 600; }
 
-/* BUTTONS */
-
-.buttons{
-display:flex;
-gap:12px;
+/* ── OTP BOX ── */
+.otp-box {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 24px;
+  background: linear-gradient(90deg, rgba(167,139,250,0.06), transparent);
+  border-top: 1px solid var(--border);
 }
-
-.btn{
-flex:1;
-padding:14px;
-border-radius:10px;
-text-decoration:none;
-font-weight:600;
-text-align:center;
+.otp-left { display: flex; flex-direction: column; gap: 3px; }
+.otp-left .otp-lbl { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.otp-left .otp-val {
+  font-family: 'Syne', sans-serif;
+  font-size: 28px; font-weight: 800;
+  letter-spacing: 0.12em;
+  background: linear-gradient(90deg, var(--purple), #7c3aed);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
+.otp-note { font-size: 11px; color: var(--muted); text-align: right; max-width: 160px; line-height: 1.4; }
 
-.btn-track{
-background:#1f2937;
-color:white;
+/* ── ORDER ITEMS ── */
+.items-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 24px 12px;
 }
-
-.btn-shop{
-background:#22c55e;
-color:white;
+.items-header h3 { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; }
+.item-list { padding: 0 24px; }
+.item-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
 }
-
-.btn:hover{
-opacity:.9;
+.item-row:last-child { border-bottom: none; }
+.item-row .iname  { color: var(--text); }
+.item-row .iqty   { font-size: 12px; color: var(--muted); margin-left: 6px; }
+.item-row .iprice { font-weight: 600; color: var(--green); }
+.total-row {
+  display: flex; justify-content: space-between;
+  padding: 16px 24px;
+  background: var(--s2);
+  border-top: 1px solid var(--border);
 }
+.total-row .tlbl { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; }
+.total-row .tval { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800; color: var(--green); }
 
-.footer{
-text-align:center;
-margin-top:15px;
-font-size:12px;
-color:#888;
+/* ── DELIVERY INFO ── */
+.delivery-info {
+  display: flex; align-items: center; gap: 12px;
+  padding: 18px 24px;
 }
+.del-icon {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  background: rgba(240,165,0,0.1);
+  border: 1px solid rgba(240,165,0,0.2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}
+.del-text h4 { font-size: 14px; font-weight: 600; margin-bottom: 3px; }
+.del-text p  { font-size: 12px; color: var(--muted); }
 
+/* ── BUTTONS ── */
+.btn-row { display: flex; gap: 12px; }
+.btn {
+  flex: 1; padding: 14px;
+  border-radius: 12px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 14px; font-weight: 600;
+  text-align: center; text-decoration: none;
+  border: none; cursor: pointer;
+  transition: all 0.2s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn-track {
+  background: var(--s2);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.btn-track:hover { border-color: var(--accent); color: var(--accent); }
+.btn-shop {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: #fff;
+}
+.btn-shop:hover { opacity: 0.88; }
+
+.footer { margin-top: 8px; text-align: center; font-size: 12px; color: var(--muted); }
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+@keyframes pop    { 0%{transform:scale(0);opacity:0} 80%{transform:scale(1.15)} 100%{transform:scale(1);opacity:1} }
+@keyframes pulse  { 0%,100%{opacity:1} 50%{opacity:.5} }
+.pulse { animation: pulse 2s infinite; }
 </style>
 </head>
-
 <body>
+
+<div class="logo">🛒 Ravi Mart</div>
 
 <div class="container">
 
-<!-- SUCCESS CARD -->
+  <!-- ── CARD 1: SUCCESS HEADER ── -->
+  <div class="card">
+    <div class="success-header">
+      <div class="check-ring"><i class="fa fa-check"></i></div>
+      <h1>Payment Successful!</h1>
+      <p>Your order has been placed and is being processed.</p>
+      <div class="order-chip"># {{ order_number }}</div>
+    </div>
 
-<div class="success-card">
+    <!-- ORDER STATUS STEPS -->
+    <div class="steps">
+      <div class="step done">
+        <div class="step-dot"><i class="fa fa-check"></i></div>
+        <div class="step-label">Order<br>Placed</div>
+      </div>
+      <div class="step {{ 'done' if rider_assigned else 'active' }}">
+        <div class="step-dot">
+          {% if rider_assigned %}
+            <i class="fa fa-check"></i>
+          {% else %}
+            <i class="fa fa-spinner pulse"></i>
+          {% endif %}
+        </div>
+        <div class="step-label">Rider<br>Assigned</div>
+      </div>
+      <div class="step">
+        <div class="step-dot"><i class="fa fa-motorcycle"></i></div>
+        <div class="step-label">Out for<br>Delivery</div>
+      </div>
+      <div class="step">
+        <div class="step-dot"><i class="fa fa-home"></i></div>
+        <div class="step-label">Delivered</div>
+      </div>
+    </div>
 
-<div class="checkmark">
-<i class="fa fa-check-circle"></i>
+    <!-- OTP -->
+    <div class="otp-box">
+      <div class="otp-left">
+        <span class="otp-lbl">🔐 Delivery OTP</span>
+        <span class="otp-val">{{ delivery_otp }}</span>
+      </div>
+      <div class="otp-note">Share this OTP only with your delivery rider to confirm delivery.</div>
+    </div>
+  </div>
+
+  <!-- ── CARD 2: RIDER INFO ── -->
+  <div class="card">
+    <div class="rider-card-inner">
+      <div class="sec-label">Delivery Rider</div>
+
+      {% if rider_assigned %}
+        <div class="rider-assigned">
+          <div class="rider-avatar">🚴</div>
+          <div class="rider-info">
+            <h3>{{ rider_name }}</h3>
+            <div class="rider-meta">
+              <i class="fa fa-circle" style="font-size:7px"></i> Online &amp; on the way
+            </div>
+            <div class="rider-meta" style="margin-top:4px;">
+              <i class="fa fa-phone"></i> {{ rider_phone }}
+            </div>
+          </div>
+          <a href="tel:{{ rider_phone }}" class="call-btn">
+            <i class="fa fa-phone"></i> Call
+          </a>
+        </div>
+      {% else %}
+        <div class="no-rider">
+          <div class="no-rider-icon">🔍</div>
+          <div class="no-rider-text">
+            <h4>Looking for a rider…</h4>
+            <p>No riders are online right now. We'll assign one as soon as a rider comes online. You'll be notified.</p>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="delivery-info">
+      <div class="del-icon">🚀</div>
+      <div class="del-text">
+        <h4>Estimated Delivery</h4>
+        <p>Within <strong>2 hours</strong> of rider pickup</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CARD 3: ORDER ITEMS ── -->
+  <div class="card">
+    <div class="items-header">
+      <h3>Order Summary</h3>
+      <span style="font-size:12px;color:var(--muted);">{{ items|length }} item{{ 's' if items|length != 1 }}</span>
+    </div>
+    <div class="item-list">
+      {% for item in items %}
+      <div class="item-row">
+        <span>
+          <span class="iname">{{ item.name }}</span>
+          <span class="iqty">× {{ item.quantity }}</span>
+        </span>
+        <span class="iprice">₹{{ item.price * item.quantity }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="total-row">
+      <span class="tlbl">Total Paid</span>
+      <span class="tval">₹{{ total }}</span>
+    </div>
+  </div>
+
+  <!-- ── CARD 4: ACTIONS ── -->
+  <div class="card" style="padding:20px;">
+    <div class="btn-row">
+      <a href="{{ url_for('track_order', order_id=order_id) }}" class="btn btn-track">
+        <i class="fa fa-location-arrow"></i> Track Order
+      </a>
+      <a href="/user_dashboard" class="btn btn-shop">
+        <i class="fa fa-shopping-bag"></i> Shop More
+      </a>
+    </div>
+  </div>
+
 </div>
 
-<h1>Payment Successful</h1>
-
-<p>Your order has been placed successfully.</p>
-
-<div class="order-number">
-Order No : {{ order_number }}
-</div>
-
-</div>
-
-<!-- DELIVERY -->
-
-<div class="delivery">
-<div>
-<i class="fa fa-truck"></i>
- Delivery in progress
-</div>
-
-<div>
-Estimated: <b>Within 2 hrs</b>
-</div>
-</div>
-
-<!-- ORDER ITEMS -->
-
-<div class="items-card">
-
-{% set total = 0 %}
-
-{% for item in items %}
-
-<div class="item">
-<span>{{ item.name }} (x{{ item.quantity }})</span>
-<span>₹{{ item.price * item.quantity }}</span>
-</div>
-
-{% set total = total + (item.price * item.quantity) %}
-
-{% endfor %}
-
-<div class="total">
-<span>Total</span>
-<span>₹{{ total }}</span>
-</div>
-
-</div>
-
-<!-- BUTTONS -->
-
-<div class="buttons">
-
-<a href="{{ url_for('track_order', order_id=order_id) }}" class="btn btn-track">
-Track Order
-</a>
-
-<a href="/user_dashboard" class="btn btn-shop">
-<i class="fa fa-shopping-bag"></i> Continue Shopping
-</a>
-
-</div>
-
-<div class="footer">
-Thank you for shopping with Ravi Mart
-</div>
+<div class="footer">Thank you for shopping with Ravi Mart 🛒</div>
 
 </body>
 </html>

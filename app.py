@@ -3,7 +3,6 @@ import sqlite3
 import os
 import uuid
 from werkzeug.security import generate_password_hash, check_password_hash
-#from flask_mail import Mail, Message
 import random
 import datetime
 from flask_socketio import SocketIO, emit
@@ -13,18 +12,10 @@ import resend
 import math
 
 
-
 resend.api_key = "re_UF144ii3_LP8KtrxyMzCjuCtppzpavdZs"
-
-
-def send_mail(app, msg):
-    with app.app_context():
-        mail.send(msg)
 
 app = Flask(__name__)
 app.secret_key = "ravi_mart_2026"
-print("MAIL USER:", os.environ.get("MAIL_USERNAME"))
-print("MAIL PASS:", os.environ.get("MAIL_PASSWORD"))
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
 DB_NAME = "database.db"
@@ -37,14 +28,23 @@ os.makedirs(PROFILE_UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = PROFILE_UPLOAD_FOLDER
 
 
-
+# ─────────────────────────────────────────────
 # DATABASE CONNECTION
+# ─────────────────────────────────────────────
 def get_db():
     conn = sqlite3.connect(DB_NAME)
     conn.row_factory = sqlite3.Row
     return conn
 
-# CREATE TABLES
+def get_db_connection():
+    conn = sqlite3.connect(DB_NAME)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+# ─────────────────────────────────────────────
+# CREATE TABLES  (must come before any route)
+# ─────────────────────────────────────────────
 def create_tables():
     db = get_db()
     cursor = db.cursor()
@@ -54,10 +54,10 @@ def create_tables():
     CREATE TABLE IF NOT EXISTS users(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE,
-        email TEXT UNIQUE,latitude REAL,longitude REAL,address text,
-        password TEXT,phoneno TEXT,profile_pic TEXT
-    )
-    """)
+        email TEXT UNIQUE,
+        latitude REAL, longitude REAL, address TEXT,
+        password TEXT, phoneno TEXT, profile_pic TEXT
+    )""")
 
     # ADMIN
     cursor.execute("""
@@ -65,8 +65,7 @@ def create_tables():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE,
         password TEXT
-    )
-    """)
+    )""")
 
     # PRODUCTS
     cursor.execute("""
@@ -76,10 +75,11 @@ def create_tables():
         price REAL,
         description TEXT,
         image TEXT,
-        quantity INTEGER,category TEXT
-    )
-    """)
-	# CART TABLE
+        quantity INTEGER,
+        category TEXT
+    )""")
+
+    # CART
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS cart(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -90,18 +90,17 @@ def create_tables():
         image TEXT,
         quantity INTEGER,
         status TEXT
-    )
-    """)
+    )""")
 
-    # CART ORDERS
+    # ORDERS (legacy)
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS orders(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER,
-        product_id INTEGER,customer_lat REAL,customer_lng REAL,
+        product_id INTEGER,
+        customer_lat REAL, customer_lng REAL,
         quantity INTEGER
-    )
-    """)
+    )""")
 
     # ORDER HISTORY
     cursor.execute("""
@@ -125,9 +124,11 @@ def create_tables():
         delivery_otp TEXT,
         payment_status TEXT,
         is_otp_verified INTEGER DEFAULT 0,
+        distance_km REAL DEFAULT 0,
+        rider_earnings REAL DEFAULT 0,
+        assigned_at TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-    """)
+    )""")
 
     # RIDERS
     cursor.execute("""
@@ -137,19 +138,18 @@ def create_tables():
         phone TEXT UNIQUE,
         vehicle TEXT,
         password TEXT,
-        status TEXT DEFAULT 'Pending'
-    )
-    """)
+        status TEXT DEFAULT 'Pending',
+        is_online INTEGER DEFAULT 0
+    )""")
 
     # RIDER LOCATION
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS rider_location(
-        rider_id INTEGER,
+        rider_id INTEGER PRIMARY KEY,
         latitude REAL,
         longitude REAL,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-    """)
+    )""")
 
     # USER ADDRESSES
     cursor.execute("""
@@ -162,8 +162,7 @@ def create_tables():
         latitude REAL,
         longitude REAL,
         full_address TEXT
-    )
-    """)
+    )""")
 
     # DEFAULT ADMIN
     cursor.execute("SELECT * FROM admin WHERE username=?", ("admin",))
@@ -175,70 +174,1238 @@ def create_tables():
 
     db.commit()
     db.close()
+
 create_tables()
 
-# ----------------- ROUTES -----------------
+
+# ─────────────────────────────────────────────
+# HELPERS
+# ─────────────────────────────────────────────
+def send_email(to_email, subject, body):
+    try:
+        resend.Emails.send({
+            "from": "OTP <onboarding@resend.dev>",
+            "to": [to_email],
+            "subject": subject,
+            "text": body
+        })
+        print("Email sent to:", to_email)
+    except Exception as e:
+        print("Email error:", e)
+
+
+def generate_order_number():
+    return uuid.uuid4().hex[:8].upper()
+
+
+def generate_delivery_otp():
+    return str(random.randint(100000, 999999))
+
+
+def calculate_distance(lat1, lon1, lat2, lon2):
+    R = 6371
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = (math.sin(dlat / 2) ** 2 +
+         math.cos(math.radians(lat1)) *
+         math.cos(math.radians(lat2)) *
+         math.sin(dlon / 2) ** 2)
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+
+def has_active_order(rider_id):
+    conn = sqlite3.connect("database.db")
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT COUNT(*) AS cnt FROM order_history
+        WHERE rider_id=?
+          AND LOWER(TRIM(rider_status)) IN ('assigned','accepted','picked')
+    """, (rider_id,))
+    result = cur.fetchone()["cnt"]
+    conn.close()
+    return result > 0
+
+
+def auto_assign_order(order_id):
+    conn = sqlite3.connect("database.db")
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+
+    cur.execute("SELECT pickup_lat, pickup_lng FROM order_history WHERE id=?", (order_id,))
+    order = cur.fetchone()
+    if not order:
+        conn.close()
+        return
+
+    store_lat = order["pickup_lat"]
+    store_lng = order["pickup_lng"]
+
+    cur.execute("""
+        SELECT r.id, rl.latitude, rl.longitude
+        FROM riders r
+        JOIN rider_location rl ON rl.rider_id = r.id
+        WHERE r.is_online=1
+          AND r.status='Approved'
+          AND r.id NOT IN (
+              SELECT DISTINCT rider_id FROM order_history
+              WHERE rider_id IS NOT NULL
+                AND LOWER(TRIM(rider_status)) IN ('assigned','accepted','picked')
+          )
+    """)
+    riders = cur.fetchall()
+
+    if not riders:
+        conn.close()
+        return
+
+    best_rider_id = None
+    best_dist = float("inf")
+    for r in riders:
+        if r["latitude"] is None or r["longitude"] is None:
+            continue
+        dist = calculate_distance(store_lat, store_lng,
+                                  float(r["latitude"]), float(r["longitude"]))
+        if dist < best_dist:
+            best_dist = dist
+            best_rider_id = r["id"]
+
+    if not best_rider_id:
+        conn.close()
+        return
+
+    cur.execute("""
+        UPDATE order_history
+        SET rider_id=?, rider_status='Assigned', status='Assigned', assigned_at=CURRENT_TIMESTAMP
+        WHERE id=?
+    """, (best_rider_id, order_id))
+    conn.commit()
+    conn.close()
+
+
+# ─────────────────────────────────────────────
+# PUBLIC ROUTES
+# ─────────────────────────────────────────────
 @app.route("/")
 def home():
     return render_template("home.html")
-	
-	
-	
-#-------------------------REGISTER FOR USER-------------------------------------- 
 
 
+# ─────────────────────────────────────────────
+# USER AUTH
+# ─────────────────────────────────────────────
 @app.route('/register', methods=['GET', 'POST'])
 def user_register():
     if request.method == 'POST':
         username = request.form['username']
-        email = request.form['email']
+        email    = request.form['email']
         password = generate_password_hash(request.form['password'])
-
         try:
-            conn = sqlite3.connect(DB_NAME)
-            cursor = conn.cursor()
-
-            cursor.execute('''
-                INSERT INTO users (username, email, password)
-                VALUES (?, ?, ?)
-            ''', (username, email, password))
-
+            conn = get_db()
+            conn.execute('INSERT INTO users(username,email,password) VALUES(?,?,?)',
+                         (username, email, password))
             conn.commit()
             conn.close()
-
-            flash("User registered successfully!", "success")
-            return redirect(url_for('user_register'))
-
+            flash("Registered successfully!", "success")
+            return redirect(url_for('user_login'))
         except Exception as e:
-            flash(f"Error registering user: {e}", "error")
-            return redirect(url_for('user_register'))
-
+            flash(f"Error: {e}", "error")
     return render_template('user_register.html')
-# ---------------- ADMIN ROUTES ----------------
-@app.route("/admin_login", methods=["GET", "POST"])
-def admin_login():
+
+
+@app.route("/user_login", methods=["GET", "POST"])
+def user_login():
     if request.method == "POST":
         username = request.form["username"]
         password = request.form["password"]
 
         db = get_db()
         cursor = db.cursor()
-        cursor.execute("SELECT * FROM admin WHERE username=?", (username,))
-        admin = cursor.fetchone()
+        cursor.execute("SELECT * FROM users WHERE username=? OR email=?", (username, username))
+        user = cursor.fetchone()
         db.close()
 
+        if user and check_password_hash(user["password"], password):
+            otp = str(random.randint(100000, 999999))
+            session["otp"]         = otp
+            session["otp_user"]    = user["id"]
+            session["user_email"]  = user["email"]
+            session["user_name"]   = user["username"]   # ← FIX: store username in session
+            session["otp_expiry"]  = (
+                datetime.datetime.now() + datetime.timedelta(minutes=5)
+            ).isoformat()
+
+            send_email(user["email"], "Your Login OTP",
+                       f"Hello {user['username']}\n\nYour OTP is: {otp}\n\nExpires in 5 minutes.")
+            return redirect(url_for("verify_otp"))
+        else:
+            flash("Invalid credentials", "danger")
+    return render_template("user_login.html")
+
+
+@app.route("/verify_otp", methods=["GET", "POST"])
+def verify_otp():
+    if "otp" not in session:
+        flash("Session expired. Please login again.", "danger")
+        return redirect("/user_login")
+
+    if request.method == "POST":
+        entered_otp = request.form["otp"]
+        expiry = datetime.datetime.fromisoformat(session["otp_expiry"])
+
+        if datetime.datetime.now() > expiry:
+            session.clear()
+            flash("OTP expired", "danger")
+            return redirect("/user_login")
+
+        if entered_otp == session["otp"]:
+            session["user"] = session["otp_user"]
+            session.pop("otp", None)
+            session.pop("otp_user", None)
+            session.pop("otp_expiry", None)
+            return redirect("/user_dashboard")
+
+        flash("Invalid OTP", "danger")
+    return render_template("verify_otp.html")
+
+
+@app.route("/resend_otp")
+def resend_otp():
+    if "user_email" not in session:
+        flash("Session expired.", "danger")
+        return redirect(url_for("user_login"))
+
+    otp = str(random.randint(100000, 999999))
+    session["otp"] = otp
+    session["otp_expiry"] = (
+        datetime.datetime.now() + datetime.timedelta(minutes=5)
+    ).isoformat()
+
+    send_email(session["user_email"], "Resend OTP",
+               f"Your new OTP is: {otp}\n\nExpires in 5 minutes.")
+    flash("OTP resent successfully", "success")
+    return redirect(url_for("verify_otp"))
+
+
+@app.route("/logout")
+def logout():
+    session.pop("user", None)
+    session.pop("user_name", None)
+    flash("Logged out successfully", "success")
+    return redirect("/")
+
+
+# ─────────────────────────────────────────────
+# USER DASHBOARD  (with map + profile panel)
+# ─────────────────────────────────────────────
+@app.route("/user_dashboard")
+def user_dashboard():
+    if "user" not in session:
+        return redirect("/user_login")
+
+    user_id  = session["user"]
+    search   = request.args.get("search")
+    category = request.args.get("category")
+
+    db = get_db()
+    cursor = db.cursor()
+
+    # Products
+    query  = "SELECT * FROM products WHERE 1=1"
+    params = []
+    if search:
+        query += " AND (name LIKE ? OR description LIKE ?)"
+        params += ['%' + search + '%', '%' + search + '%']
+    if category:
+        query += " AND LOWER(category)=LOWER(?)"
+        params.append(category)
+    cursor.execute(query, params)
+    products = cursor.fetchall()
+
+    # Counts
+    cursor.execute("SELECT COUNT(*) FROM order_history WHERE user_id=?", (user_id,))
+    order_count = cursor.fetchone()[0]
+
+    cursor.execute("""
+        SELECT COALESCE(SUM(quantity),0) AS cart_count
+        FROM cart WHERE user_id=? AND status='Cart'
+    """, (user_id,))
+    cart_count = cursor.fetchone()["cart_count"]
+
+    # User profile
+    cursor.execute("SELECT * FROM users WHERE id=?", (user_id,))
+    user = cursor.fetchone()
+
+    # Active orders (for map)
+    cursor.execute("""
+        SELECT oh.id, oh.order_number, oh.status, oh.rider_status,
+               oh.customer_lat, oh.customer_lng, oh.customer_address,
+               oh.pickup_lat, oh.pickup_lng,
+               oh.rider_id,
+               p.name AS product_name,
+               rl.latitude AS rider_lat, rl.longitude AS rider_lng,
+               r.name AS rider_name, r.phone AS rider_phone
+        FROM order_history oh
+        JOIN products p ON p.id = oh.product_id
+        LEFT JOIN riders r ON r.id = oh.rider_id
+        LEFT JOIN rider_location rl ON rl.rider_id = oh.rider_id
+        WHERE oh.user_id=?
+          AND oh.status NOT IN ('Delivered','Cancelled')
+        ORDER BY oh.created_at DESC
+        LIMIT 5
+    """, (user_id,))
+    active_orders = [dict(r) for r in cursor.fetchall()]
+
+    # Recent orders
+    cursor.execute("""
+        SELECT oh.id, oh.order_number, oh.status, oh.payment_status,
+               oh.created_at, oh.price, oh.quantity,
+               p.name AS product_name, p.image
+        FROM order_history oh
+        JOIN products p ON p.id = oh.product_id
+        WHERE oh.user_id=?
+        ORDER BY oh.created_at DESC
+        LIMIT 5
+    """, (user_id,))
+    recent_orders = cursor.fetchall()
+
+    # Address count
+    cursor.execute("SELECT COUNT(*) FROM addresses WHERE user_id=?", (user_id,))
+    address_count = cursor.fetchone()[0]
+
+    # Total spent
+    cursor.execute("""
+        SELECT COALESCE(SUM(price*quantity),0) FROM order_history
+        WHERE user_id=? AND payment_status='paid'
+    """, (user_id,))
+    total_spent = cursor.fetchone()[0]
+
+    db.close()
+
+    # Update session username in case it changed
+    if user:
+        session["user_name"] = user["username"]
+
+    return render_template(
+        "user_dashboard.html",
+        products=products,
+        order_count=order_count,
+        cart_count=cart_count,
+        user=user,
+        current_user=user,
+        total_orders=order_count,
+        active_orders=active_orders,
+        address_count=address_count,
+        total_spent=total_spent,
+        recent_orders=recent_orders,
+    )
+
+
+# ─────────────────────────────────────────────
+# PROFILE
+# ─────────────────────────────────────────────
+@app.route("/profile", methods=["GET"])
+def profile():
+    if "user" not in session:
+        return redirect("/user_login")
+    user = get_db_connection().execute(
+        "SELECT * FROM users WHERE id=?", (session["user"],)
+    ).fetchone()
+    return render_template("profile.html", user=user)
+
+
+@app.route("/update_profile", methods=["POST"])
+def update_profile():
+    if "user" not in session:
+        return redirect("/user_login")
+
+    user_id  = session["user"]
+    username = request.form.get("username")
+    email    = request.form.get("email")
+    phoneno  = request.form.get("phoneno")
+    file     = request.files.get("profile_pic")
+    profile_pic = None
+
+    if file and file.filename != "":
+        filename   = secure_filename(file.filename)
+        folder     = "static/profile_pic"
+        os.makedirs(folder, exist_ok=True)
+        file.save(os.path.join(folder, filename))
+        profile_pic = filename
+
+    conn = get_db_connection()
+    if profile_pic:
+        conn.execute("""
+            UPDATE users SET username=?,email=?,phoneno=?,profile_pic=? WHERE id=?
+        """, (username, email, phoneno, profile_pic, user_id))
+    else:
+        conn.execute("""
+            UPDATE users SET username=?,email=?,phoneno=? WHERE id=?
+        """, (username, email, phoneno, user_id))
+    conn.commit()
+    conn.close()
+
+    session["user_name"] = username
+    return redirect(url_for("profile"))
+
+
+# ─────────────────────────────────────────────
+# CART
+# ─────────────────────────────────────────────
+@app.route("/add_to_cart/<int:product_id>", methods=["POST"])
+def add_to_cart(product_id):
+    if "user" not in session:
+        return jsonify({"success": False, "error": "Not logged in"})
+
+    user_id = session["user"]
+    qty = int(request.form.get("qty", 1))
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM products WHERE id=?", (product_id,))
+    product = cursor.fetchone()
+    if not product or product["quantity"] < qty:
+        conn.close()
+        return jsonify({"success": False, "error": "Not enough stock"})
+
+    cursor.execute("SELECT * FROM cart WHERE user_id=? AND product_id=? AND status='Cart'",
+                   (user_id, product_id))
+    item = cursor.fetchone()
+
+    if item:
+        cursor.execute("UPDATE cart SET quantity=quantity+? WHERE id=?", (qty, item["id"]))
+    else:
+        cursor.execute("""
+            INSERT INTO cart(user_id,product_id,product_name,price,quantity,image,status)
+            VALUES(?,?,?,?,?,?,?)
+        """, (user_id, product_id, product["name"], product["price"], qty, product["image"], "Cart"))
+
+    cursor.execute("UPDATE products SET quantity=quantity-? WHERE id=?", (qty, product_id))
+    conn.commit()
+
+    cursor.execute("SELECT COALESCE(SUM(quantity),0) FROM cart WHERE user_id=? AND status='Cart'",
+                   (user_id,))
+    cart_count = cursor.fetchone()[0]
+    conn.close()
+
+    return jsonify({"success": True, "cart_count": cart_count})
+
+
+@app.route("/cart")
+def view_cart():
+    if "user" not in session:
+        return redirect("/user_login")
+
+    user_id = session["user"]
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute("""
+        SELECT c.id, c.product_name AS name, c.product_id,
+               c.price, c.image, c.quantity
+        FROM cart c
+        JOIN products p ON p.id=c.product_id
+        WHERE c.user_id=? AND c.status='Cart'
+    """, (user_id,))
+    items = cursor.fetchall()
+    total = sum(i["price"] * i["quantity"] for i in items)
+    db.close()
+    return render_template("cart.html", items=items, total=total)
+
+
+@app.route("/update_cart/<int:product_id>", methods=["POST"])
+def update_cart(product_id):
+    if "user" not in session:
+        return redirect("/user_login")
+
+    qty = int(request.form.get("qty", 1))
+    user_id = session["user"]
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute("SELECT id FROM cart WHERE user_id=? AND product_id=? AND status='Cart'",
+                   (user_id, product_id))
+    existing = cursor.fetchone()
+    if existing:
+        cursor.execute("UPDATE cart SET quantity=? WHERE id=?", (qty, existing["id"]))
+    db.commit()
+    db.close()
+    return redirect("/cart")
+
+
+@app.route("/remove_item/<int:item_id>")
+def remove_item(item_id):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM cart WHERE id=?", (item_id,))
+    item = cursor.fetchone()
+    if item:
+        cursor.execute("UPDATE products SET quantity=quantity+? WHERE id=?",
+                       (item["quantity"], item["product_id"]))
+        cursor.execute("DELETE FROM cart WHERE id=?", (item_id,))
+        conn.commit()
+    conn.close()
+    return redirect("/cart")
+
+
+# ─────────────────────────────────────────────
+# ADDRESSES
+# ─────────────────────────────────────────────
+@app.route("/addresses")
+def addresses():
+    if "user" not in session:
+        return redirect("/user_login")
+    conn = get_db()
+    saved_addresses = conn.execute(
+        "SELECT * FROM addresses WHERE user_id=?", (session["user"],)
+    ).fetchall()
+    conn.close()
+    return render_template("addresses.html", saved_addresses=saved_addresses)
+
+
+@app.route("/save_address", methods=["POST"])
+def save_address():
+    if "user" not in session:
+        return redirect("/user_login")
+
+    user_id     = session["user"]
+    street      = request.form["street"]
+    house_no    = request.form["house_no"]
+    landmark    = request.form["landmark"]
+    latitude    = request.form["latitude"]
+    longitude   = request.form["longitude"]
+    full_address = request.form["full_address"]
+
+    conn = get_db()
+    conn.execute("""
+        INSERT INTO addresses(user_id,street,house_no,landmark,latitude,longitude,full_address)
+        VALUES(?,?,?,?,?,?,?)
+    """, (user_id, street, house_no, landmark, latitude, longitude, full_address))
+    conn.commit()
+    conn.close()
+    return redirect("/addresses")
+
+
+@app.route('/edit_address/<int:address_id>', methods=['GET', 'POST'])
+def edit_address(address_id):
+    if "user" not in session:
+        return redirect("/user_login")
+
+    user_id = session["user"]
+    conn = get_db()
+
+    address = conn.execute(
+        "SELECT * FROM addresses WHERE id=? AND user_id=?", (address_id, user_id)
+    ).fetchone()
+
+    if not address:
+        conn.close()
+        return "Address not found", 404
+
+    if request.method == "POST":
+        conn.execute("""
+            UPDATE addresses SET street=?,house_no=?,landmark=?,
+            latitude=?,longitude=?,full_address=?
+            WHERE id=? AND user_id=?
+        """, (request.form["street"], request.form["house_no"], request.form["landmark"],
+              request.form["latitude"], request.form["longitude"], request.form["full_address"],
+              address_id, user_id))
+        conn.commit()
+        conn.close()
+        return redirect("/addresses")
+
+    conn.close()
+    return render_template("edit_address.html", address=address)
+
+
+@app.route('/delete_address/<int:address_id>')
+def delete_address(address_id):
+    if "user" not in session:
+        return redirect("/user_login")
+    conn = get_db()
+    conn.execute("DELETE FROM addresses WHERE id=? AND user_id=?",
+                 (address_id, session["user"]))
+    conn.commit()
+    conn.close()
+    return redirect("/addresses")
+
+
+# ─────────────────────────────────────────────
+# CHECKOUT
+# ─────────────────────────────────────────────
+@app.route("/checkout", methods=["GET", "POST"])
+@app.route("/checkout/<int:address_id>", methods=["GET", "POST"])
+def checkout_page(address_id=None):
+    if "user" not in session:
+        return redirect("/user_login")
+
+    user_id = session["user"]
+
+    if address_id:
+        session["selected_address"] = address_id
+        return redirect(url_for("payment"))
+
+    if request.method == "POST":
+        address_id = request.form.get("address_id")
+        if not address_id:
+            flash("Please select an address", "error")
+            return redirect(url_for("checkout_page"))
+        session["selected_address"] = address_id
+        return redirect(url_for("payment"))
+
+    db = get_db()
+    cursor = db.cursor()
+
+    cursor.execute("""
+        SELECT cart.id AS order_id, products.name, products.price, cart.quantity
+        FROM cart
+        JOIN products ON cart.product_id=products.id
+        WHERE cart.user_id=? AND cart.status='Cart'
+    """, (user_id,))
+    items = cursor.fetchall()
+    total = sum(i["price"] * i["quantity"] for i in items)
+
+    cursor.execute("SELECT * FROM addresses WHERE user_id=?", (user_id,))
+    saved_addresses = cursor.fetchall()
+    db.close()
+
+    return render_template("addresses.html", items=items, total=total,
+                           saved_addresses=saved_addresses)
+
+
+# ─────────────────────────────────────────────
+# PAYMENT
+# ─────────────────────────────────────────────
+@app.route("/payment", methods=["GET", "POST"])
+def payment():
+    if "user" not in session:
+        return redirect("/user_login")
+
+    user_id    = session["user"]
+    address_id = session.get("selected_address")
+
+    if not address_id:
+        flash("Please select an address first", "error")
+        return redirect("/addresses")
+
+    db = get_db()
+    cursor = db.cursor()
+
+    cursor.execute("""
+        SELECT cart.id AS order_id, products.id AS product_id,
+               products.name, products.price, cart.quantity
+        FROM cart
+        JOIN products ON cart.product_id=products.id
+        WHERE cart.user_id=? AND cart.status='Cart'
+    """, (user_id,))
+    items = cursor.fetchall()
+
+    if not items:
+        flash("Your cart is empty", "error")
+        return redirect("/user_dashboard")
+
+    total = sum(i["price"] * i["quantity"] for i in items)
+
+    # ── GET ──
+    if request.method == "GET":
+        order_number = generate_order_number()
+        delivery_otp = generate_delivery_otp()
+        session["temp_order_number"] = order_number
+        session["temp_delivery_otp"] = delivery_otp
+
+        cursor.execute("SELECT email,username FROM users WHERE id=?", (user_id,))
+        user = cursor.fetchone()
+        if user and user["email"]:
+            send_email(user["email"], "Your Delivery OTP — Ravi Mart",
+                       f"Order #{order_number}\nDelivery OTP: {delivery_otp}\n\nShare this OTP only with your rider.")
+
+        db.close()
+        return render_template("payment.html", items=items, total=total,
+                               order_number=order_number, delivery_otp=delivery_otp)
+
+    # ── POST ──
+    order_number = session.get("temp_order_number")
+    delivery_otp = session.get("temp_delivery_otp")
+
+    if not order_number:
+        flash("Order error", "error")
+        return redirect("/cart")
+
+    cursor.execute("""
+        SELECT latitude,longitude,full_address FROM addresses WHERE id=? AND user_id=?
+    """, (address_id, user_id))
+    addr = cursor.fetchone()
+
+    pickup_lat     = 17.440894
+    pickup_lng     = 78.444348
+    pickup_address = "Ravi Mart Store"
+
+    for item in items:
+        cursor.execute("""
+            INSERT INTO order_history
+            (order_number,user_id,product_id,quantity,price,address_id,
+             customer_lat,customer_lng,customer_address,
+             pickup_lat,pickup_lng,pickup_address,
+             status,rider_status,delivery_otp,payment_status)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        """, (order_number, user_id, item["product_id"], item["quantity"], item["price"],
+              address_id, addr["latitude"], addr["longitude"], addr["full_address"],
+              pickup_lat, pickup_lng, pickup_address,
+              "Pending", "Pending", delivery_otp, "paid"))
+
+    db.commit()
+
+    cursor.execute("SELECT id FROM order_history WHERE order_number=? LIMIT 1", (order_number,))
+    row = cursor.fetchone()
+    order_id = row["id"] if row else None
+
+    cursor.execute("DELETE FROM cart WHERE user_id=?", (user_id,))
+    db.commit()
+    db.close()
+
+    session.pop("temp_order_number", None)
+    session.pop("temp_delivery_otp", None)
+
+    if order_id:
+        auto_assign_order(order_id)
+
+    return redirect(url_for("payment_success", order_number=order_number))
+
+
+# ─────────────────────────────────────────────
+# PAYMENT SUCCESS  (enhanced with address + map data)
+# ─────────────────────────────────────────────
+@app.route("/payment_success/")
+@app.route("/payment_success/<order_number>")
+def payment_success(order_number=None):
+    if "user" not in session:
+        return redirect("/user_login")
+
+    if not order_number:
+        return redirect("/user_dashboard")
+
+    user_id = session["user"]
+    db = get_db()
+    cursor = db.cursor()
+
+    # All items for this order
+    cursor.execute("""
+        SELECT oh.id, oh.quantity, oh.price,
+               oh.delivery_otp, oh.status, oh.rider_status,
+               oh.rider_id, oh.assigned_at,
+               oh.customer_lat, oh.customer_lng, oh.customer_address,
+               oh.pickup_lat, oh.pickup_lng, oh.pickup_address,
+               p.name
+        FROM order_history oh
+        JOIN products p ON oh.product_id=p.id
+        WHERE oh.order_number=? AND oh.user_id=?
+    """, (order_number, user_id))
+    items = cursor.fetchall()
+
+    if not items:
+        db.close()
+        return redirect("/user_dashboard")
+
+    # Rider + order info
+    cursor.execute("""
+        SELECT oh.id AS order_id, oh.delivery_otp, oh.status,
+               oh.rider_status, oh.assigned_at,
+               oh.customer_lat, oh.customer_lng, oh.customer_address,
+               oh.pickup_lat, oh.pickup_lng, oh.pickup_address,
+               r.id AS rider_id, r.name AS rider_name, r.phone AS rider_phone,
+               rl.latitude AS rider_lat, rl.longitude AS rider_lng
+        FROM order_history oh
+        LEFT JOIN riders r ON r.id=oh.rider_id
+        LEFT JOIN rider_location rl ON rl.rider_id=oh.rider_id
+        WHERE oh.order_number=?
+        LIMIT 1
+    """, (order_number,))
+    order_info = cursor.fetchone()
+
+    # User details
+    cursor.execute("SELECT * FROM users WHERE id=?", (user_id,))
+    user = cursor.fetchone()
+
+    db.close()
+
+    session.pop("selected_address", None)
+
+    total         = sum(i["price"] * i["quantity"] for i in items)
+    order_id      = order_info["order_id"]      if order_info else None
+    delivery_otp  = order_info["delivery_otp"]  if order_info else ""
+    rider_name    = order_info["rider_name"]     if order_info else None
+    rider_phone   = order_info["rider_phone"]    if order_info else None
+    rider_assigned = rider_name is not None
+
+    # Map data — pass as JSON-safe dict
+    map_data = None
+    if order_info:
+        map_data = {
+            "customer_lat":   order_info["customer_lat"],
+            "customer_lng":   order_info["customer_lng"],
+            "customer_address": order_info["customer_address"],
+            "pickup_lat":     order_info["pickup_lat"],
+            "pickup_lng":     order_info["pickup_lng"],
+            "pickup_address": order_info["pickup_address"],
+            "rider_lat":      order_info["rider_lat"],
+            "rider_lng":      order_info["rider_lng"],
+        }
+
+    return render_template(
+        "payment_success.html",
+        order_number   = order_number,
+        order_id       = order_id,
+        items          = items,
+        total          = total,
+        delivery_otp   = delivery_otp,
+        rider_assigned = rider_assigned,
+        rider_name     = rider_name,
+        rider_phone    = rider_phone,
+        map_data       = map_data,
+        user           = user,
+    )
+
+
+# ─────────────────────────────────────────────
+# MY ORDERS
+# ─────────────────────────────────────────────
+@app.route("/my_orders")
+def my_orders():
+    if "user" not in session:
+        return redirect("/user_login")
+
+    user_id = session["user"]
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute("""
+        SELECT oh.id, oh.order_number, p.name, p.image, oh.quantity, oh.price,
+               oh.status, oh.payment_status, oh.created_at,
+               oh.pickup_lat, oh.pickup_lng, oh.customer_lat, oh.customer_lng,
+               oh.pickup_address, oh.customer_address
+        FROM order_history oh
+        JOIN products p ON oh.product_id=p.id
+        WHERE oh.user_id=?
+        ORDER BY oh.created_at DESC
+    """, (user_id,))
+    orders = cursor.fetchall()
+    db.close()
+    return render_template("my_orders.html", orders=orders)
+
+
+@app.route("/get_customer_orders")
+def get_customer_orders():
+    if "user" not in session:
+        return jsonify([])
+
+    user_id = session["user"]
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute("""
+        SELECT oh.id, oh.order_number, oh.quantity, oh.price,
+               oh.status, oh.payment_status, oh.created_at,
+               oh.pickup_lat, oh.pickup_lng, oh.customer_lat, oh.customer_lng,
+               oh.pickup_address, oh.customer_address,
+               oh.rider_id, oh.rider_status,
+               p.name, p.image
+        FROM order_history oh
+        JOIN products p ON oh.product_id=p.id
+        WHERE oh.user_id=?
+        ORDER BY oh.created_at DESC
+    """, (user_id,))
+
+    orders = []
+    for row in cursor.fetchall():
+        orders.append({
+            "id":               row["id"],
+            "order_number":     row["order_number"],
+            "name":             row["name"],
+            "image":            row["image"],
+            "quantity":         row["quantity"],
+            "price":            row["price"],
+            "status":           row["status"] or "Pending",
+            "payment_status":   row["payment_status"] or "Pending",
+            "created_at":       row["created_at"],
+            "pickup_lat":       row["pickup_lat"],
+            "pickup_lng":       row["pickup_lng"],
+            "customer_lat":     row["customer_lat"],
+            "customer_lng":     row["customer_lng"],
+            "pickup_address":   row["pickup_address"],
+            "customer_address": row["customer_address"],
+            "rider_id":         row["rider_id"],
+            "rider_status":     row["rider_status"] or "Not Assigned",
+        })
+
+    db.close()
+    return jsonify(orders)
+
+
+# ─────────────────────────────────────────────
+# TRACK ORDER
+# ─────────────────────────────────────────────
+@app.route("/track_order/<int:order_id>")
+def track_order(order_id):
+    if "user" not in session:
+        return redirect("/user_login")
+    conn = get_db()
+    order = conn.execute("SELECT * FROM order_history WHERE id=?", (order_id,)).fetchone()
+    conn.close()
+    if not order:
+        return "Order not found", 404
+    return render_template("track_order.html", order=dict(order))
+
+
+@app.route("/get_delivery_route/<int:order_id>")
+def get_delivery_route(order_id):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT customer_lat,customer_lng,rider_id FROM order_history WHERE id=?",
+                   (order_id,))
+    order = cursor.fetchone()
+    cursor.execute("""
+        SELECT r.id, r.name, l.latitude, l.longitude
+        FROM riders r
+        LEFT JOIN rider_location l ON r.id=l.rider_id
+        WHERE r.status='Approved'
+    """)
+    riders = [dict(r) for r in cursor.fetchall()]
+    conn.close()
+
+    if not order:
+        return jsonify({"error": "not found"}), 404
+
+    return jsonify({
+        "customer_lat":    order["customer_lat"],
+        "customer_lng":    order["customer_lng"],
+        "assigned_rider":  order["rider_id"],
+        "riders":          riders,
+    })
+
+
+@app.route("/get_order_rider/<int:order_id>")
+def get_order_rider(order_id):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT oh.id, oh.rider_id, oh.rider_status,
+               a.latitude AS cust_lat, a.longitude AS cust_lng,
+               rl.latitude AS rider_lat, rl.longitude AS rider_lng,
+               r.name AS rider_name, r.phone AS rider_phone
+        FROM order_history oh
+        LEFT JOIN users u ON u.id=oh.user_id
+        LEFT JOIN rider_location rl ON rl.rider_id=oh.rider_id
+        LEFT JOIN addresses a ON a.user_id=u.id
+        LEFT JOIN riders r ON r.id=oh.rider_id
+        WHERE oh.id=?
+    """, (order_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else {}
+
+
+# ─────────────────────────────────────────────
+# RIDER ROUTES
+# ─────────────────────────────────────────────
+@app.route("/rider_register", methods=["GET","POST"])
+def rider_register():
+    if request.method == "POST":
+        name = request.form["name"]
+        phone = request.form["phone"]
+        password = request.form["password"]
+
+        conn = get_db()
+        cur = conn.cursor()
+
+        # check existing phone
+        cur.execute("SELECT * FROM riders WHERE phone=?", (phone,))
+        existing = cur.fetchone()
+
+        if existing:
+            flash("Phone number already registered", "error")
+            return redirect("/rider_register")
+
+        cur.execute(
+            "INSERT INTO riders (name, phone, password) VALUES (?,?,?)",
+            (name, phone, password)
+        )
+
+        conn.commit()
+        conn.close()
+
+        flash("Registration successful", "success")
+        return redirect("/rider_login")
+
+    return render_template("rider_register.html")
+
+
+@app.route("/rider_login", methods=["GET", "POST"])
+def rider_login():
+    if request.method == "POST":
+        phone    = request.form["phone"]
+        password = request.form["password"]
+
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM riders WHERE phone=? AND status='Approved'", (phone,))
+        rider = cursor.fetchone()
+        conn.close()
+
+        if rider and check_password_hash(rider["password"], password):
+            session["rider"] = rider["id"]
+            return redirect("/rider_dashboard")
+        flash("Invalid phone or password", "danger")
+    return render_template("rider_login.html")
+
+
+@app.route("/rider/online")
+def rider_online():
+    if "rider" not in session:
+        return redirect("/rider_login")
+    conn = get_db()
+    conn.execute("UPDATE riders SET is_online=1 WHERE id=?", (session["rider"],))
+    conn.commit()
+    conn.close()
+    return redirect("/rider_dashboard")
+
+
+@app.route("/rider/offline")
+def rider_offline():
+    if "rider" not in session:
+        return redirect("/rider_login")
+    conn = get_db()
+    conn.execute("UPDATE riders SET is_online=0 WHERE id=?", (session["rider"],))
+    conn.commit()
+    conn.close()
+    return redirect("/rider_dashboard")
+
+
+@app.route("/rider_dashboard")
+def rider_dashboard():
+    if "rider" not in session:
+        return redirect("/rider_login")
+
+    rider_id = session["rider"]
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT oh.*, rl.latitude AS rider_lat, rl.longitude AS rider_lng,
+               p.name AS product_name
+        FROM order_history oh
+        JOIN products p ON p.id=oh.product_id
+        LEFT JOIN rider_location rl ON rl.rider_id=oh.rider_id
+        WHERE oh.rider_id=?
+          AND LOWER(TRIM(oh.rider_status)) IN ('assigned','accepted','picked')
+        ORDER BY oh.id DESC
+    """, (rider_id,))
+    orders = [dict(r) for r in cur.fetchall()]
+
+    cur.execute("""
+        SELECT COUNT(*) AS total_rides,
+               IFNULL(SUM(rider_earnings),0) AS total_earnings,
+               IFNULL(SUM(distance_km),0) AS total_km,
+               IFNULL(SUM(CASE WHEN DATE(created_at)=DATE('now') THEN rider_earnings END),0) AS today_earnings,
+               IFNULL(SUM(CASE WHEN DATE(created_at)>=DATE('now','-7 days') THEN rider_earnings END),0) AS week_earnings
+        FROM order_history
+        WHERE rider_id=? AND LOWER(TRIM(rider_status))='delivered'
+    """, (rider_id,))
+    summary = dict(cur.fetchone())
+
+    cur.execute("""
+        SELECT oh.order_number, oh.customer_address AS address,
+               oh.distance_km, oh.rider_earnings,
+               oh.rider_status AS status, oh.created_at AS delivered_at
+        FROM order_history oh
+        WHERE oh.rider_id=? AND LOWER(TRIM(oh.rider_status))='delivered'
+        ORDER BY oh.id DESC LIMIT 50
+    """, (rider_id,))
+    rides = [dict(r) for r in cur.fetchall()]
+    conn.close()
+
+    return render_template("rider_dashboard.html", orders=orders, summary=summary,
+                           rides=rides, has_active_order=has_active_order(rider_id))
+
+
+@app.route("/accept_order/<int:order_id>")
+def accept_order(order_id):
+    if "rider" not in session:
+        return redirect("/rider_login")
+
+    rider_id = session["rider"]
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT COUNT(*) AS cnt FROM order_history
+        WHERE rider_id=? AND LOWER(TRIM(rider_status)) IN ('accepted','picked')
+    """, (rider_id,))
+    if cur.fetchone()["cnt"] > 0:
+        conn.close()
+        flash("Complete your current order first.", "warning")
+        return redirect("/rider_dashboard")
+
+    cur.execute("""
+        SELECT id FROM order_history
+        WHERE id=? AND rider_id=? AND LOWER(TRIM(rider_status))='assigned'
+    """, (order_id, rider_id))
+    if not cur.fetchone():
+        conn.close()
+        flash("Order no longer available.", "warning")
+        return redirect("/rider_dashboard")
+
+    cur.execute("""
+        UPDATE order_history SET rider_status='Accepted', status='Accepted' WHERE id=?
+    """, (order_id,))
+    conn.commit()
+    conn.close()
+    return redirect("/rider_dashboard")
+
+
+@app.route("/pickup_order/<int:order_id>")
+def pickup_order(order_id):
+    if "rider" not in session:
+        return redirect("/rider_login")
+
+    rider_id = session["rider"]
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT id FROM order_history
+        WHERE id=? AND rider_id=? AND LOWER(TRIM(rider_status))='accepted'
+    """, (order_id, rider_id))
+    if not cur.fetchone():
+        conn.close()
+        return redirect("/rider_dashboard")
+
+    cur.execute("""
+        UPDATE order_history SET rider_status='Picked', status='Out for Delivery' WHERE id=?
+    """, (order_id,))
+    conn.commit()
+    conn.close()
+    return redirect("/rider_dashboard")
+
+
+@app.route("/verify_delivery/<int:order_id>", methods=["GET", "POST"])
+def verify_delivery(order_id):
+    if "rider" not in session:
+        return redirect("/rider_login")
+
+    rider_id = session["rider"]
+    conn = get_db()
+    cur = conn.cursor()
+
+    try:
+        if request.method == "POST":
+            otp_entered = request.form.get("otp", "").strip()
+            cur.execute("""
+                SELECT delivery_otp, pickup_lat, pickup_lng, customer_lat, customer_lng
+                FROM order_history
+                WHERE id=? AND rider_id=? AND LOWER(TRIM(rider_status))='picked'
+            """, (order_id, rider_id))
+            order = cur.fetchone()
+
+            if not order:
+                flash("Order not found.", "danger")
+                return redirect("/rider_dashboard")
+
+            if str(order["delivery_otp"]).strip() == otp_entered:
+                distance = calculate_distance(
+                    float(order["pickup_lat"]), float(order["pickup_lng"]),
+                    float(order["customer_lat"]), float(order["customer_lng"])
+                )
+                earning = round(distance * 7, 2)
+                cur.execute("""
+                    UPDATE order_history
+                    SET rider_status='Delivered', status='Delivered',
+                        is_otp_verified=1, distance_km=?, rider_earnings=?
+                    WHERE id=?
+                """, (round(distance, 2), earning, order_id))
+                conn.commit()
+                flash(f"✅ Delivered! You earned ₹{earning}", "success")
+                return redirect("/rider_dashboard")
+            else:
+                flash("❌ Invalid OTP. Try again.", "danger")
+
+        return render_template("verify_otp.html", order_id=order_id)
+    finally:
+        conn.close()
+
+
+@app.route("/update_rider_location", methods=["POST"])
+def update_rider_location():
+    if "rider" not in session:
+        return jsonify({"status": "error"})
+
+    rider_id = session["rider"]
+    data = request.get_json()
+    lat  = data.get("lat")
+    lng  = data.get("lng")
+
+    conn = get_db()
+    cur  = conn.cursor()
+    cur.execute("SELECT rider_id FROM rider_location WHERE rider_id=?", (rider_id,))
+    if cur.fetchone():
+        cur.execute("""
+            UPDATE rider_location SET latitude=?,longitude=?,updated_at=CURRENT_TIMESTAMP
+            WHERE rider_id=?
+        """, (lat, lng, rider_id))
+    else:
+        cur.execute("INSERT INTO rider_location(rider_id,latitude,longitude) VALUES(?,?,?)",
+                    (rider_id, lat, lng))
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "ok"})
+
+
+@app.route("/get_rider_locations")
+def get_rider_locations():
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT rl.rider_id AS id,
+               rl.latitude AS lat,
+               rl.longitude AS lng,
+               oh.customer_lat,
+               oh.customer_lng
+        FROM rider_location rl
+        LEFT JOIN order_history oh
+          ON oh.rider_id = rl.rider_id
+          AND LOWER(TRIM(oh.rider_status)) IN ('assigned','accepted','picked')
+        GROUP BY rl.rider_id
+    """)
+
+    data = [dict(r) for r in cur.fetchall()]
+    conn.close()
+
+    return jsonify(data)
+
+
+# ─────────────────────────────────────────────
+# ADMIN ROUTES
+# ─────────────────────────────────────────────
+@app.route("/admin_login", methods=["GET", "POST"])
+def admin_login():
+    if request.method == "POST":
+        username = request.form["username"]
+        password = request.form["password"]
+        db = get_db()
+        admin = db.execute("SELECT * FROM admin WHERE username=?", (username,)).fetchone()
+        db.close()
         if admin and check_password_hash(admin["password"], password):
             session["admin"] = admin["id"]
             return redirect("/admin_dashboard")
         flash("Invalid credentials", "danger")
     return render_template("admin_login.html")
-#ADMIN DASHBOARD
+
+
 @app.route("/admin_dashboard")
 def admin_dashboard():
     if "admin" not in session:
         return redirect("/admin_login")
+
     db = get_db()
     cursor = db.cursor()
+
     cursor.execute("SELECT * FROM products")
     products = cursor.fetchall()
 
@@ -255,78 +1422,64 @@ def admin_dashboard():
     revenue = cursor.fetchone()[0] or 0
 
     cursor.execute("""
-    SELECT DATE(created_at) as date, SUM(price*quantity) as total
-    FROM order_history
-    GROUP BY DATE(created_at)
-    ORDER BY DATE(created_at)
+        SELECT DATE(created_at) AS date, SUM(price*quantity) AS total
+        FROM order_history GROUP BY DATE(created_at) ORDER BY DATE(created_at)
     """)
-    rows = cursor.fetchall()
-    labels = [row["date"] for row in rows]
-    values = [row["total"] for row in rows]
+    rows   = cursor.fetchall()
+    labels = [r["date"]  for r in rows]
+    values = [r["total"] for r in rows]
     db.close()
 
     return render_template("admin_dashboard.html",
                            products=products, revenue=revenue,
                            total_orders=total_orders, total_users=total_users,
                            total_products=total_products, labels=labels, values=values)
-						 
 
-#-----------------Add Product---------------------
+
 @app.route("/add_product", methods=["POST"])
 def add_product():
+    if "admin" not in session:
+        return redirect("/admin_login")
 
-    name = request.form["name"]
-    price = request.form["price"]
-    quantity = request.form["quantity"]
+    name        = request.form["name"]
+    price       = request.form["price"]
+    quantity    = request.form["quantity"]
     description = request.form["description"]
-    category = request.form["category"]
+    category    = request.form["category"]
+    image       = request.files["image"]
 
-    image = request.files["image"]
-
-    filename = secure_filename(str(uuid.uuid4()) + "_" + image.filename)
+    filename   = secure_filename(str(uuid.uuid4()) + "_" + image.filename)
     image_path = "images/" + filename
     image.save("static/" + image_path)
 
     db = get_db()
-    cursor = db.cursor()
-
-    cursor.execute("""
+    db.execute("""
         INSERT INTO products(name,price,quantity,description,image,category)
         VALUES(?,?,?,?,?,?)
     """, (name, price, quantity, description, image_path, category))
-
     db.commit()
-
+    db.close()
     return redirect("/admin_dashboard")
-	
-#-------------------ADMIN ORDERS---------------------------------------
+
+
 @app.route('/admin_orders')
 def admin_orders():
+    if "admin" not in session:
+        return redirect("/admin_login")
+
     db = get_db()
     cursor = db.cursor()
 
-    # Fetch orders with user and product info
     cursor.execute("""
-        SELECT 
-            o.id,
-            o.order_number,
-            o.quantity,
-            o.price,
-            o.status,
-            o.payment_status,
-            o.created_at,
-            o.rider_id,
-            u.username,
-            p.name ,
-            p.image,o.payment_status 
+        SELECT o.id, o.order_number, o.quantity, o.price, o.status, o.payment_status,
+               o.created_at, o.rider_id, u.username, p.name, p.image
         FROM order_history o
-        JOIN users u ON o.user_id = u.id
-        JOIN products p ON o.product_id = p.id
+        JOIN users u ON o.user_id=u.id
+        JOIN products p ON o.product_id=p.id
         ORDER BY o.created_at DESC
     """)
     orders = cursor.fetchall()
 
-    # Stats
     cursor.execute("SELECT COUNT(*) FROM order_history")
     total_orders = cursor.fetchone()[0]
 
@@ -336,1539 +1489,101 @@ def admin_orders():
     cursor.execute("SELECT COUNT(*) FROM order_history WHERE status='Completed'")
     completed_orders = cursor.fetchone()[0]
 
-    cursor.execute("SELECT SUM(price*quantity) FROM order_history WHERE payment_status='Paid'")
+    cursor.execute("SELECT SUM(price*quantity) FROM order_history WHERE payment_status='paid'")
     revenue = cursor.fetchone()[0] or 0
 
-    # Fetch riders for assignment dropdown
-    cursor.execute("SELECT * FROM riders")
+    cursor.execute("SELECT * FROM riders WHERE status='Approved'")
     riders = cursor.fetchall()
-
     db.close()
 
     filter_status = request.args.get('filter', 'All')
-
     return render_template('admin_orders.html', orders=orders, riders=riders,
                            total_orders=total_orders, pending_orders=pending_orders,
                            completed_orders=completed_orders, revenue=revenue,
                            filter_status=filter_status)
+
+
 @app.route("/admin_riders")
 def admin_riders():
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
+    if "admin" not in session:
+        return redirect("/admin_login")
+    db = get_db()
+    riders = db.execute("SELECT * FROM riders").fetchall()
+    db.close()
+    return render_template("admin_riders.html", riders=riders)
 
-    cursor.execute("SELECT * FROM riders")
-    riders = cursor.fetchall()
 
-    conn.close()
-
-    return render_template("admin_riders.html", riders=riders)	
 @app.route("/approve_rider/<int:rider_id>")
 def approve_rider(rider_id):
-
-    conn = sqlite3.connect("database.db")
-    cur = conn.cursor()
-
-    cur.execute("UPDATE riders SET status='Approved' WHERE id=?", (rider_id,))
-    conn.commit()
-    conn.close()
-
+    if "admin" not in session:
+        return redirect("/admin_login")
+    db = get_db()
+    db.execute("UPDATE riders SET status='Approved' WHERE id=?", (rider_id,))
+    db.commit()
+    db.close()
     return redirect("/admin_riders")
-	
-#UPDATE ORDER STATUS
+
+
 @app.route("/update_order_status/<int:order_id>/<status>")
 def update_order_status(order_id, status):
+    if "admin" not in session:
+        return redirect("/admin_login")
     db = get_db()
-    cursor = db.cursor()
-    cursor.execute("UPDATE order_history SET status=? WHERE id=?", (status, order_id))
+    db.execute("UPDATE order_history SET status=? WHERE id=?", (status, order_id))
     db.commit()
     db.close()
     return redirect("/admin_orders")
-#UPDATE TRACKING
+
+
 @app.route("/update_tracking/<int:id>/<status>")
 def update_tracking(id, status):
     if "admin" not in session:
         return redirect("/admin_login")
     db = get_db()
-    cursor = db.cursor()
-    cursor.execute("UPDATE order_history SET status=? WHERE id=?", (status, id))
+    db.execute("UPDATE order_history SET status=? WHERE id=?", (status, id))
     db.commit()
     db.close()
     return redirect("/admin_orders")
-#Assign Order	
+
+
 @app.route("/assign_rider", methods=["POST"])
 def assign_rider():
+    if "admin" not in session:
+        return redirect("/admin_login")
+
     order_id = request.form.get("order_id")
     rider_id = request.form.get("rider_id")
 
     if order_id and rider_id:
-        db = sqlite3.connect("database.db")
-        cursor = db.cursor()
-
-        cursor.execute("""
+        db = get_db()
+        db.execute("""
             UPDATE order_history
-            SET rider_id = ?, rider_status = 'Assigned', status = 'Assigned'
-            WHERE id = ?
+            SET rider_id=?, rider_status='Assigned', status='Assigned'
+            WHERE id=?
         """, (rider_id, order_id))
-
         db.commit()
         db.close()
-
     return redirect("/admin_orders")
-#ADMIN LOGOUT
+
+
 @app.route("/admin_logout")
 def admin_logout():
     session.pop("admin", None)
     flash("Admin logged out successfully", "success")
     return redirect("/")
 
-# ---------------- USER ROUTES ----------------
 
-#USER LOGIN
-import threading
-
-def send_email(to_email, subject, body):
-
-    try:
-        resend.Emails.send({
-            "from": "OTP <onboarding@resend.dev>",
-            "to": [to_email],
-            "subject": subject,
-            "text": body
-        })
-
-        print("Email sent successfully")
-
-    except Exception as e:
-        print("Email error:", e)
-
-
-@app.route("/user_login", methods=["GET", "POST"])
-def user_login():
-
-    if request.method == "POST":
-
-        username = request.form["username"]
-        password = request.form["password"]
-
-        db = get_db()
-        cursor = db.cursor()
-
-        cursor.execute(
-            "SELECT * FROM users WHERE username=? OR email=?",
-            (username, username)
-        )
-
-        user = cursor.fetchone()
-
-        if user and check_password_hash(user["password"], password):
-
-            otp = str(random.randint(100000, 999999))
-
-            session["otp"] = otp
-            session["otp_user"] = user["id"]
-            session["user_email"] = user["email"]
-            session["otp_expiry"] = (
-                datetime.datetime.now() + datetime.timedelta(minutes=5)
-            ).isoformat()
-
-            print("SENDING OTP TO:", user["email"])
-            print("OTP:", otp)
-
-            send_email(
-                user["email"],
-                "Your Login OTP",
-                f"""
-Hello {user['username']}
-
-Your OTP is: {otp}
-
-This OTP will expire in 5 minutes.
-"""
-            )
-
-            return redirect(url_for("verify_otp"))
-
-        else:
-            flash("Invalid login", "danger")
-
-    return render_template("user_login.html")
-	
-@app.route("/verify_otp", methods=["GET", "POST"])
-def verify_otp():
-
-    if "otp" not in session:
-        flash("Session expired. Please login again.", "danger")
-        return redirect("/user_login")
-
-    if request.method == "POST":
-
-        entered_otp = request.form["otp"]
-
-        expiry = datetime.datetime.fromisoformat(session["otp_expiry"])
-
-        if datetime.datetime.now() > expiry:
-            session.clear()
-            flash("OTP expired", "danger")
-            return redirect("/user_login")
-
-        if entered_otp == session["otp"]:
-
-            session["user"] = session["otp_user"]
-
-            session.pop("otp", None)
-            session.pop("otp_user", None)
-            session.pop("otp_expiry", None)
-
-            return redirect("/user_dashboard")
-
-        flash("Invalid OTP", "danger")
-
-    return render_template("verify_otp.html")
-@app.route("/resend_otp")
-def resend_otp():
-
-    if "user_email" not in session:
-        flash("Session expired. Please login again.", "danger")
-        return redirect(url_for("user_login"))
-
-    otp = str(random.randint(100000, 999999))
-
-    session["otp"] = otp
-    session["otp_expiry"] = (
-        datetime.datetime.now() + datetime.timedelta(minutes=5)
-    ).isoformat()
-
-    print("RESENDING OTP TO:", session["user_email"])
-    print("NEW OTP:", otp)
-
-    send_email(
-        session["user_email"],
-        "Resend OTP",
-        f"""
-Your new OTP is: {otp}
-
-This OTP will expire in 5 minutes.
-"""
-    )
-
-    flash("OTP resent successfully", "success")
-
-    return redirect(url_for("verify_otp"))
-
-# ---------------- USER DASHBOARD ----------------
-@app.route("/user_dashboard")
-def user_dashboard():
-
-    # CHECK LOGIN
-    if "user" not in session:
-        return redirect("/user_login")
-
-    user_id = session["user"]
-
-    search = request.args.get("search")
-    category = request.args.get("category")
-
-    db = get_db()
-    cursor = db.cursor()
-
-    # -----------------------------
-    # PRODUCTS QUERY
-    # -----------------------------
-    query = "SELECT * FROM products WHERE 1=1"
-    params = []
-
-    # SEARCH FILTER
-    if search:
-        query += " AND (name LIKE ? OR description LIKE ?)"
-        params.append('%' + search + '%')
-        params.append('%' + search + '%')
-
-    # CATEGORY FILTER
-    if category:
-        query += " AND LOWER(category)=LOWER(?)"
-        params.append(category)
-
-    cursor.execute(query, params)
-    products = cursor.fetchall()
-
-    # -----------------------------
-    # ORDER COUNT
-    # -----------------------------
-    cursor.execute(
-        "SELECT COUNT(*) FROM order_history WHERE user_id=?",
-        (user_id,)
-    )
-    order_count = cursor.fetchone()[0]
-
-    # -----------------------------
-    # CART COUNT (FIXED)
-    # -----------------------------
-    cursor.execute("""
-        SELECT COALESCE(SUM(quantity),0) AS cart_count
-        FROM cart
-        WHERE user_id=? AND status='Cart'
-    """, (user_id,))
-
-    cart_count = cursor.fetchone()["cart_count"]
-
-    # -----------------------------
-    # USER PROFILE
-    # -----------------------------
-    cursor.execute(
-        "SELECT * FROM users WHERE id=?",
-        (user_id,)
-    )
-    user = cursor.fetchone()
-
-    db.close()
-
-    return render_template(
-        "user_dashboard.html",
-        products=products,
-        order_count=order_count,
-        cart_count=cart_count,
-        user=user,
-		current_user=user,total_orders=order_count, active_orders=0, address_count=0,total_spent=0, recent_orders=[]
-    )
-	#--------------------user Profile---------------------	
-
-
-def get_db_connection():
-    conn = sqlite3.connect(DB_NAME)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-@app.route("/profile", methods=["GET"])
-def profile():
-    if "user" not in session:
-        return redirect("/user_login")
-
-    user_id = session["user"]
-
-    conn = get_db_connection()
-    user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
-    conn.close()
-
-    return render_template("profile.html", user=user)
-
-@app.route("/update_profile", methods=["POST"])
-def update_profile():
-
-    if "user" not in session:
-        return redirect("/user_login")
-
-    user_id = session["user"]
-
-    username = request.form.get("username")
-    email = request.form.get("email")
-    phoneno = request.form.get("phoneno")
-
-    file = request.files.get("profile_pic")
-    profile_pic = None
-
-    if file and file.filename != "":
-
-        filename = secure_filename(file.filename)
-
-        upload_folder = "static/profile_pic"
-        os.makedirs(upload_folder, exist_ok=True)
-
-        filepath = os.path.join(upload_folder, filename)
-
-        file.save(filepath)
-
-        profile_pic = filename   # store only filename in DB
-
-    conn = get_db_connection()
-
-    if profile_pic:
-        conn.execute("""
-            UPDATE users
-            SET username=?, email=?, phoneno=?, profile_pic=?
-            WHERE id=?
-        """, (username, email, phoneno, profile_pic, user_id))
-    else:
-        conn.execute("""
-            UPDATE users
-            SET username=?, email=?, phoneno=?
-            WHERE id=?
-        """, (username, email, phoneno, user_id))
-
-    conn.commit()
-    conn.close()
-
-    return redirect(url_for("profile"))
-# ---------------- CART ROUTES ----------------
-@app.route("/add_to_cart/<int:product_id>", methods=["POST"])
-def add_to_cart(product_id):
-
-    user_id = session["user"]
-    qty = int(request.form.get("qty",1))
-
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-
-    # get product
-    cursor.execute("SELECT * FROM products WHERE id=?", (product_id,))
-    product = cursor.fetchone()
-
-    # check stock
-    if product["quantity"] < qty:
-        return jsonify({"success":False,"error":"Not enough stock"})
-
-    # check existing cart item
-    cursor.execute(
-        "SELECT * FROM cart WHERE user_id=? AND product_id=?",
-        (user_id, product_id)
-    )
-    item = cursor.fetchone()
-
-    if item:
-        # update quantity
-        cursor.execute(
-            "UPDATE cart SET quantity = quantity + ?, status='Cart' WHERE id=?",
-            (qty, item["id"])
-        )
-    else:
-        # insert new cart item
-        cursor.execute("""
-        INSERT INTO cart (user_id,product_id,product_name,price,quantity,image,status)
-        VALUES (?,?,?,?,?,?,?)
-        """,(user_id,product_id,product["name"],product["price"],qty,product["image"],"Cart"))
-
-    # reduce stock
-    cursor.execute(
-        "UPDATE products SET quantity = quantity - ? WHERE id=?",
-        (qty,product_id)
-    )
-
-    conn.commit()
-
-    # cart count
-    cursor.execute("SELECT COALESCE(SUM(quantity),0) FROM cart WHERE user_id=? AND status='Cart'", (user_id,))
-    cart_count = cursor.fetchone()[0]
-
-    conn.close()
-
-    return jsonify({"success":True,"cart_count":cart_count})
-#------------------CART--------------------------------
-@app.route("/cart")
-def view_cart():
-
-    if "user" not in session:
-        return redirect("/user_login")
-
-    user_id = session["user"]
-
-    db = get_db()
-    cursor = db.cursor()
-
-    cursor.execute("""
-        SELECT 
-            c.id,
-            c.product_name as name,c.product_id,
-            c.price,
-            c.image,
-            c.quantity
-        FROM cart c join products p on p.id=c.product_id 
-        WHERE user_id=? AND status='Cart'
-    """, (user_id,))
-
-    items = cursor.fetchall()
-
-    total = 0
-    for item in items:
-        total += item["price"] * item["quantity"]
-
-    db.close()
-
-    return render_template(
-        "cart.html",
-        items=items,
-        total=total
-    )
-#--------------------Update Quantity--------------------------
-@app.route("/update_cart/<int:product_id>", methods=["POST"])
-def update_cart(product_id):
-    if "user" not in session:
-        return redirect("/user_login")
-
-    qty = int(request.form.get("qty", 1))
-    user_id = session["user"]
-
-    db = get_db()
-    cursor = db.cursor()
-
-    # Check if item exists in cart
-    cursor.execute("SELECT id FROM cart WHERE user_id=? AND product_id=? AND status='Cart'", (user_id, product_id))
-    existing = cursor.fetchone()
-
-    if existing:
-        # Update quantity
-        cursor.execute("UPDATE cart SET quantity=? WHERE id=?", (qty, existing["id"]))
-    else:
-        # Insert new
-        cursor.execute("INSERT INTO cart(user_id, product_id, product_name, price, image, quantity, status) VALUES (?,?,?,?,?,?,?)",
-                       (user_id, product_id, "Product Name Placeholder", 0, "default.jpg", qty, "Cart"))  # Adjust product info as needed
-
-    db.commit()
-    db.close()
-    return redirect("/cart")
-#---------------------------remove item-------------------------
-@app.route("/remove_item/<int:item_id>")
-def remove_item(item_id):
-
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-
-    # Get cart item
-    cursor.execute("SELECT * FROM cart WHERE id=?", (item_id,))
-    item = cursor.fetchone()
-
-    # Return stock
-    cursor.execute(
-        "UPDATE products SET quantity = quantity + ? WHERE id=?",
-        (item["quantity"], item["product_id"])
-    )
-
-    # Delete from cart
-    cursor.execute("DELETE FROM cart WHERE id=?", (item_id,))
-
-    conn.commit()
-    conn.close()
-
-    return redirect("/cart")
-# ---------------- CHECKOUT PAGE ----------------
-@app.route("/checkout", methods=["GET", "POST"])
-@app.route("/checkout/<int:address_id>", methods=["GET", "POST"])
-def checkout_page(address_id=None):
-
-    if "user" not in session:
-        return redirect("/user_login")
-
-    user_id = session["user"]
-
-    db = get_db()
-    cursor = db.cursor()
-
-    # DEBUG
-    print("SESSION USER:", user_id)
-
-    cursor.execute("SELECT * FROM addresses")
-    print("ALL ADDRESSES:", cursor.fetchall())
-
-    # If user clicked Deliver Here
-    if address_id:
-        session["selected_address"] = address_id
-        return redirect(url_for("payment"))
-
-    if request.method == "POST":
-        address_id = request.form.get("address_id")
-
-        if not address_id:
-            flash("Please select an address", "error")
-            return redirect(url_for("checkout_page"))
-
-        session["selected_address"] = address_id
-        return redirect(url_for("payment"))
-
-    # CART ITEMS
-    cursor.execute("""
-        SELECT orders.id as order_id, products.name, products.price, orders.quantity
-        FROM orders
-        JOIN products ON orders.product_id = products.id
-        WHERE orders.user_id=?
-    """, (user_id,))
-    
-    items = cursor.fetchall()
-
-    total = sum(item["price"] * item["quantity"] for item in items)
-
-    cursor.execute("SELECT * FROM addresses WHERE user_id=?", (user_id,))
-    saved_addresses = cursor.fetchall()
-
-    print("FILTERED ADDRESSES:", saved_addresses)
-
-    db.close()
-
-    return render_template(
-        "addresses.html",
-        items=items,
-        total=total,
-        saved_addresses=saved_addresses
-    )
-
-
-# ---------------- SAVE ADDRESS ----------------
-@app.route("/save_address", methods=["POST"])
-def save_address():
-    if "user" not in session:
-        return redirect("/user_login")
-
-    user_id = session["user"]
-    street = request.form["street"]
-    house_no = request.form["house_no"]
-    landmark = request.form["landmark"]
-    latitude = request.form["latitude"]
-    longitude = request.form["longitude"]
-    full_address = request.form["full_address"]
-
-    conn = sqlite3.connect("database.db")
-    cursor = conn.cursor()
-    cursor.execute("""
-        INSERT INTO addresses (user_id, street, house_no, landmark, latitude, longitude, full_address)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, (user_id, street, house_no, landmark, latitude, longitude, full_address))
-    conn.commit()
-    conn.close()
-
-    return redirect("/addresses")
-
-
-# ---------------- SHOW ADDRESSES ----------------
-@app.route("/addresses")
-def addresses():
-    if "user" not in session:
-        return redirect("/user_login")
-
-    user_id = session["user"]
-
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT * FROM addresses WHERE user_id=?", (user_id,))
-    saved_addresses = cursor.fetchall()
-    conn.close()
-
-    return render_template("addresses.html", saved_addresses=saved_addresses)
-#----------------------Edit Address-----------------------------
-@app.route('/edit_address/<int:address_id>', methods=['GET', 'POST'])
-def edit_address(address_id):
-    if "user" not in session:
-        return redirect("/user_login")
-
-    user_id = session["user"]
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-
-    # Fetch address
-    cursor.execute("SELECT * FROM addresses WHERE id=? AND user_id=?", (address_id, user_id))
-    address = cursor.fetchone()
-
-    if not address:
-        conn.close()
-        return "Address not found or you don't have permission."
-
-    if request.method == "POST":
-        street = request.form["street"]
-        house_no = request.form["house_no"]
-        landmark = request.form["landmark"]
-        latitude = request.form["latitude"]
-        longitude = request.form["longitude"]
-        full_address = request.form["full_address"]
-
-        cursor.execute("""
-            UPDATE addresses
-            SET street=?, house_no=?, landmark=?, latitude=?, longitude=?, full_address=?
-            WHERE id=? AND user_id=?
-        """, (street, house_no, landmark, latitude, longitude, full_address, address_id, user_id))
-        conn.commit()
-        conn.close()
-        return redirect("/addresses")
-
-    conn.close()
-    return render_template("edit_address.html", address=address)
-#------------------------Delete Address----------------------
-@app.route('/delete_address/<int:address_id>')
-def delete_address(address_id):
-    if "user" not in session:
-        return redirect("/user_login")
-
-    user_id = session["user"]
-
-    conn = sqlite3.connect("database.db")
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM addresses WHERE id=? AND user_id=?", (address_id, user_id))
-    conn.commit()
-    conn.close()
-
-    return redirect("/addresses")
-# ---------------- GENERATE ORDER NUMBER ----------------
-def generate_order_number():
-    return uuid.uuid4().hex[:8].upper()
-
-
-# ---------------- GENERATE DELIVERY OTP ----------------
-def generate_delivery_otp():
-    return str(random.randint(100000, 999999))
-
-
-# ---------------- PAYMENT ROUTE ----------------
-@app.route("/payment", methods=["GET", "POST"])
-def payment():
-
-    if "user" not in session:
-        return redirect("/user_login")
-
-    user_id = session["user"]
-
-    address_id = session.get("selected_address")
-    if not address_id:
-        flash("Please select an address first", "error")
-        return redirect("/addresses")
-
-    db = get_db()
-    cursor = db.cursor()
-
-    cursor.execute("""
-        SELECT cart.id as order_id,
-               products.id as product_id,
-               products.name,
-               products.price,
-               cart.quantity
-        FROM cart 
-        JOIN products ON cart.product_id = products.id
-        WHERE cart.user_id=?
-    """, (user_id,))
-
-    items = cursor.fetchall()
-
-    if not items:
-        flash("Your cart is empty", "error")
-        return redirect("/user_dashboard")
-
-    total = sum(item["price"] * item["quantity"] for item in items)
-
-    # ---------------- GET ----------------
-    if request.method == "GET":
-
-        order_number = generate_order_number()
-        delivery_otp = generate_delivery_otp()
-
-        session["temp_order_number"] = order_number
-        session["temp_delivery_otp"] = delivery_otp
-
-        cursor.execute("SELECT email, username FROM users WHERE id=?", (user_id,))
-        user = cursor.fetchone()
-
-        if user and user["email"]:
-            send_email(
-                user["email"],
-                "Your Delivery OTP - Ravi Mart",
-                f"OTP: {delivery_otp}\nOrder: {order_number}"
-            )
-
-        db.close()
-
-        return render_template(
-            "payment.html",
-            items=items,
-            total=total,
-            order_number=order_number,
-            delivery_otp=delivery_otp
-        )
-
-    # ---------------- POST ----------------
-
-    order_number = session.get("temp_order_number")
-    delivery_otp = session.get("temp_delivery_otp")
-
-    if not order_number:
-        flash("Order error", "error")
-        return redirect("/cart")
-
-    cursor.execute("""
-        SELECT latitude, longitude, full_address
-        FROM addresses
-        WHERE id=? AND user_id=?
-    """, (address_id, user_id))
-
-    addr = cursor.fetchone()
-
-    pickup_lat = 17.440894
-    pickup_lng = 78.444348
-    pickup_address = "Ravi Mart Store"
-
-    # INSERT ORDERS
-    for item in items:
-        cursor.execute("""
-            INSERT INTO order_history
-            (order_number, user_id, product_id, quantity, price, address_id,
-            customer_lat, customer_lng, customer_address,
-            pickup_lat, pickup_lng, pickup_address,
-            status, rider_status, delivery_otp, payment_status)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-        """, (
-            order_number,
-            user_id,
-            item["product_id"],
-            item["quantity"],
-            item["price"],
-            address_id,
-            addr["latitude"],
-            addr["longitude"],
-            addr["full_address"],
-            pickup_lat,
-            pickup_lng,
-            pickup_address,
-            "Pending",
-            "Pending",
-            delivery_otp,
-            "paid"
-        ))
-
-    db.commit()
-
-    # 🔥 GET ONE ORDER ID FOR THIS ORDER_NUMBER
-    cursor.execute("""
-        SELECT id FROM order_history 
-        WHERE order_number=?
-        LIMIT 1
-    """, (order_number,))
-
-    row = cursor.fetchone()
-    order_id = row["id"] if row else None
-    cursor.execute("DELETE FROM cart WHERE user_id=?", (user_id,))
-    db.commit()
-    db.close()
-
-    # clear cart session
-    session.pop("temp_order_number")
-    session.pop("temp_delivery_otp")
-
-    # 🔥 AUTO ASSIGN (CORRECT PLACE)
-    if order_id:
-        auto_assign_order(order_id)
-
-    return redirect(url_for("payment_success", order_number=order_number))
-
-
-# ---------------- PAYMENT SUCCESS ----------------
-@app.route("/payment_success/")
-@app.route("/payment_success/<order_number>")
-def payment_success(order_number=None):
-
-    if "user" not in session:
-        return redirect("/user_login")
-
-    if not order_number:
-        return redirect("/user_dashboard")
-
-    db = get_db()
-    cursor = db.cursor()
-
-    # Fetch order details
-    cursor.execute("""
-        SELECT oh.*, p.name, p.image
-        FROM order_history oh
-        JOIN products p ON oh.product_id = p.id
-        WHERE oh.order_number=?
-    """, (order_number,))
-
-    order_details = cursor.fetchone()
-
-    db.close()
-
-    # clear address session
-    session.pop("selected_address", None)
-
-    if not order_details:
-        return redirect("/user_dashboard")
-		
-
-    return render_template(
-        "payment_success.html",
-        order_number=order_number,
-        order=order_details, order_id=order_details["id"] 
-    )
-# ---------------- MY ORDERS ----------------
-
-	
-@app.route("/my_orders")
-def my_orders():
-    if "user" not in session:
-        return redirect("/user_login")
-    user_id = session["user"]
-    db = get_db()
-    cursor = db.cursor()
-
-    # Fetch order info including pickup/customer coordinates
-    cursor.execute("""
-        SELECT oh.id, oh.order_number, p.name, p.image, oh.quantity, oh.price, 
-               oh.status, oh.payment_status, oh.created_at,
-               oh.pickup_lat, oh.pickup_lng, oh.customer_lat, oh.customer_lng,
-               oh.pickup_address, oh.customer_address
-        FROM order_history oh
-        JOIN products p ON oh.product_id = p.id
-        WHERE oh.user_id = ?
-        ORDER BY oh.created_at DESC
-    """, (user_id,))
-    orders = cursor.fetchall()
-    db.close()
-
-    return render_template("my_orders.html", orders=orders)
-
-
-# API route for JS map to fetch orders as JSON
-@app.route("/get_customer_orders")
-def get_customer_orders():
-
-    # 1. CHECK LOGIN
-    if "user" not in session:
-        return jsonify([])
-
-    user_id = session["user"]
-
-    # 2. CONNECT DB
-    db = get_db()
-    db.row_factory = sqlite3.Row
-    cursor = db.cursor()
-
-    # 3. FETCH ORDERS WITH RIDER + LOCATION DATA
-    cursor.execute("""
-        SELECT 
-            oh.id,
-            oh.order_number,
-            oh.quantity,
-            oh.price,
-            oh.status,
-            oh.payment_status,
-            oh.created_at,
-
-            oh.pickup_lat,
-            oh.pickup_lng,
-            oh.customer_lat,
-            oh.customer_lng,
-            oh.pickup_address,
-            oh.customer_address,
-
-            oh.rider_id,
-            oh.rider_status,
-
-            p.name,
-            p.image
-
-        FROM order_history oh
-        JOIN products p ON oh.product_id = p.id
-        WHERE oh.user_id = ?
-        ORDER BY oh.created_at DESC
-    """, (user_id,))
-
-    # 4. CONVERT TO JSON SAFE FORMAT
-    orders = []
-
-    for row in cursor.fetchall():
-        orders.append({
-            "id": row["id"],
-            "order_number": row["order_number"],
-            "name": row["name"],
-            "image": row["image"],
-            "quantity": row["quantity"],
-            "price": row["price"],
-            "status": row["status"] or "Pending",
-            "payment_status": row["payment_status"] or "Pending",
-            "created_at": row["created_at"],
-
-            "pickup_lat": row["pickup_lat"],
-            "pickup_lng": row["pickup_lng"],
-            "customer_lat": row["customer_lat"],
-            "customer_lng": row["customer_lng"],
-            "pickup_address": row["pickup_address"],
-            "customer_address": row["customer_address"],
-
-            "rider_id": row["rider_id"],
-            "rider_status": row["rider_status"] or "Not Assigned"
-        })
-
-    db.close()
-
-    return jsonify(orders)
-# ---------------- TRACK ORDER ----------------
-@app.route("/track_order/<int:order_id>")
-def track_order(order_id):
-    if "user" not in session: return redirect("/user_login")
-
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM order_history WHERE id=?", (order_id,))
-    order = cursor.fetchone()
-    conn.close()
-    if not order: return "Order not found", 404
-
-    order = dict(order)
-    return render_template("track_order.html", order=order)
-
-#  RIDER ROUTES — drop these into your existing app.py
-#  Replace every rider-related route you currently have
-
-
-# ── HELPER: haversine distance ───────────────────────────────
-def calculate_distance(lat1, lon1, lat2, lon2):
-    R = 6371
-    dlat = math.radians(lat2 - lat1)
-    dlon = math.radians(lon2 - lon1)
-    a = (math.sin(dlat/2)**2 +
-         math.cos(math.radians(lat1)) *
-         math.cos(math.radians(lat2)) *
-         math.sin(dlon/2)**2)
-    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-
-
-# ── HELPER: does this rider already have an active order? ────
-def has_active_order(rider_id):
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT COUNT(*) AS cnt
-        FROM order_history
-        WHERE rider_id = ?
-          AND LOWER(TRIM(rider_status)) IN ('assigned','accepted','picked')
-    """, (rider_id,))
-    result = cur.fetchone()["cnt"]
-    conn.close()
-    return result > 0
-
-
-# ── AUTO-ASSIGN: called right after payment ──────────────────
-#
-#  Logic:
-#  1. Find all ONLINE riders who have NO active order
-#  2. Use rider_location table for their coordinates
-#  3. Pick the CLOSEST one to the store (pickup_lat/lng)
-#  4. Set rider_id + rider_status = 'Assigned'
-#  5. That order now belongs ONLY to that rider — no one else sees it
-#
-def auto_assign_order(order_id):
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
-
-    # Get store coords from the order
-    cur.execute("""
-        SELECT pickup_lat, pickup_lng
-        FROM order_history
-        WHERE id = ?
-    """, (order_id,))
-    order = cur.fetchone()
-
-    if not order:
-        conn.close()
-        return
-
-    store_lat = order["pickup_lat"]
-    store_lng = order["pickup_lng"]
-
-    # Get all ONLINE riders who have NO active order right now
-    cur.execute("""
-        SELECT r.id, rl.latitude, rl.longitude
-        FROM riders r
-        JOIN rider_location rl ON rl.rider_id = r.id
-        WHERE r.is_online = 1
-          AND r.status = 'Approved'
-          AND r.id NOT IN (
-              SELECT DISTINCT rider_id
-              FROM order_history
-              WHERE rider_id IS NOT NULL
-                AND LOWER(TRIM(rider_status)) IN ('assigned','accepted','picked')
-          )
-    """)
-    riders = cur.fetchall()
-
-    if not riders:
-        conn.close()
-        return  # No available rider — order stays Pending
-
-    # Find closest rider to store
-    best_rider_id = None
-    best_dist = float("inf")
-
-    for r in riders:
-        if r["latitude"] is None or r["longitude"] is None:
-            continue
-        dist = calculate_distance(
-            store_lat, store_lng,
-            float(r["latitude"]), float(r["longitude"])
-        )
-        if dist < best_dist:
-            best_dist = dist
-            best_rider_id = r["id"]
-
-    if not best_rider_id:
-        conn.close()
-        return
-
-    # Assign the order to this rider only
-    cur.execute("""
-        UPDATE order_history
-        SET rider_id = ?,
-            rider_status = 'Assigned',
-            status = 'Assigned'
-        WHERE id = ?
-    """, (best_rider_id, order_id))
-
-    conn.commit()
-    conn.close()
-
-
-# ── RIDER REGISTER ───────────────────────────────────────────
-@app.route("/rider_register", methods=["GET", "POST"])
-def rider_register():
-    if request.method == "POST":
-        name     = request.form["name"]
-        phone    = request.form["phone"]
-        vehicle  = request.form["vehicle"]
-        password = generate_password_hash(request.form["password"])
-
-        conn = sqlite3.connect("database.db")
-        cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO riders (name, phone, vehicle, password, status, is_online)
-            VALUES (?, ?, ?, ?, 'Pending', 0)
-        """, (name, phone, vehicle, password))
-        conn.commit()
-        conn.close()
-        return redirect("/rider_login")
-
-    return render_template("rider_register.html")
-
-
-# ── RIDER LOGIN ──────────────────────────────────────────────
-@app.route("/rider_login", methods=["GET", "POST"])
-def rider_login():
-    if request.method == "POST":
-        phone    = request.form["phone"]
-        password = request.form["password"]
-
-        conn = sqlite3.connect("database.db")
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT * FROM riders
-            WHERE phone = ? AND status = 'Approved'
-        """, (phone,))
-        rider = cursor.fetchone()
-        conn.close()
-
-        if rider and check_password_hash(rider["password"], password):
-            session["rider"] = rider["id"]
-            return redirect("/rider_dashboard")
-
-        flash("Invalid phone or password", "danger")
-
-    return render_template("rider_login.html")
-
-
-# ── GO ONLINE ────────────────────────────────────────────────
-@app.route("/rider/online")
-def rider_online():
-    if "rider" not in session:
-        return redirect("/rider_login")
-
-    conn = sqlite3.connect("database.db")
-    conn.execute("UPDATE riders SET is_online=1 WHERE id=?", (session["rider"],))
-    conn.commit()
-    conn.close()
-    return redirect("/rider_dashboard")
-
-
-# ── GO OFFLINE ───────────────────────────────────────────────
-@app.route("/rider/offline")
-def rider_offline():
-    if "rider" not in session:
-        return redirect("/rider_login")
-
-    conn = sqlite3.connect("database.db")
-    conn.execute("UPDATE riders SET is_online=0 WHERE id=?", (session["rider"],))
-    conn.commit()
-    conn.close()
-    return redirect("/rider_dashboard")
-
-
-# ── RIDER DASHBOARD ──────────────────────────────────────────
-#
-#  KEY RULE: only show orders WHERE rider_id = this rider
-#  Orders accepted by another rider are NEVER visible here.
-#
-@app.route("/rider_dashboard")
-def rider_dashboard():
-    if "rider" not in session:
-        return redirect("/rider_login")
-
-    rider_id = session["rider"]
-
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
-
-    # ACTIVE ORDERS — only this rider's, only active statuses
-    cur.execute("""
-        SELECT
-            oh.*,
-            rl.latitude  AS rider_lat,
-            rl.longitude AS rider_lng,
-            p.name       AS product_name
-        FROM order_history oh
-        JOIN products p ON p.id = oh.product_id
-        LEFT JOIN rider_location rl ON rl.rider_id = oh.rider_id
-        WHERE oh.rider_id = ?
-          AND LOWER(TRIM(oh.rider_status)) IN ('assigned','accepted','picked')
-        ORDER BY oh.id DESC
-    """, (rider_id,))
-    orders = [dict(r) for r in cur.fetchall()]
-
-    # EARNINGS SUMMARY
-    cur.execute("""
-        SELECT
-            COUNT(*)                          AS total_rides,
-            IFNULL(SUM(rider_earnings), 0)    AS total_earnings,
-            IFNULL(SUM(distance_km), 0)       AS total_km,
-            IFNULL(SUM(CASE
-                WHEN DATE(created_at) = DATE('now')
-                THEN rider_earnings END), 0)  AS today_earnings,
-            IFNULL(SUM(CASE
-                WHEN DATE(created_at) >= DATE('now','-7 days')
-                THEN rider_earnings END), 0)  AS week_earnings
-        FROM order_history
-        WHERE rider_id = ?
-          AND LOWER(TRIM(rider_status)) = 'delivered'
-    """, (rider_id,))
-    summary = dict(cur.fetchone())
-
-    # DELIVERY HISTORY (last 50)
-    cur.execute("""
-        SELECT
-            oh.order_number,
-            oh.customer_address AS address,
-            oh.distance_km,
-            oh.rider_earnings,
-            oh.rider_status     AS status,
-            oh.created_at       AS delivered_at
-        FROM order_history oh
-        WHERE oh.rider_id = ?
-          AND LOWER(TRIM(oh.rider_status)) = 'delivered'
-        ORDER BY oh.id DESC
-        LIMIT 50
-    """, (rider_id,))
-    rides = [dict(r) for r in cur.fetchall()]
-
-    conn.close()
-
-    return render_template(
-        "rider_dashboard.html",
-        orders=orders,
-        summary=summary,
-        rides=rides,
-        has_active_order=has_active_order(rider_id)
-    )
-
-
-# ── ACCEPT ORDER ─────────────────────────────────────────────
-#
-#  Once rider A accepts → rider_status = 'Accepted'
-#  No other rider can accept it (it was never shown to them
-#  because auto_assign_order sets rider_id exclusively).
-#
-@app.route("/accept_order/<int:order_id>")
-def accept_order(order_id):
-    if "rider" not in session:
-        return redirect("/rider_login")
-
-    rider_id = session["rider"]
-
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
-
-    # Block if rider already busy
-    cur.execute("""
-        SELECT COUNT(*) AS cnt FROM order_history
-        WHERE rider_id = ?
-          AND LOWER(TRIM(rider_status)) IN ('accepted','picked')
-    """, (rider_id,))
-    if cur.fetchone()["cnt"] > 0:
-        conn.close()
-        flash("Complete your current order first.", "warning")
-        return redirect("/rider_dashboard")
-
-    # Confirm order is still 'Assigned' to THIS rider only
-    cur.execute("""
-        SELECT id FROM order_history
-        WHERE id = ?
-          AND rider_id = ?
-          AND LOWER(TRIM(rider_status)) = 'assigned'
-    """, (order_id, rider_id))
-    order = cur.fetchone()
-
-    if not order:
-        conn.close()
-        flash("Order no longer available.", "warning")
-        return redirect("/rider_dashboard")
-
-    cur.execute("""
-        UPDATE order_history
-        SET rider_status = 'Accepted', status = 'Accepted'
-        WHERE id = ?
-    """, (order_id,))
-
-    conn.commit()
-    conn.close()
-    return redirect("/rider_dashboard")
-
-
-# ── PICKUP ORDER ─────────────────────────────────────────────
-#
-#  Rider has reached the store and picked up the parcel.
-#  rider_status: Accepted → Picked
-#  Map will now hide rider→store route and show store→customer.
-#
-@app.route("/pickup_order/<int:order_id>")
-def pickup_order(order_id):
-    if "rider" not in session:
-        return redirect("/rider_login")
-
-    rider_id = session["rider"]
-
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
-
-    # Must belong to this rider and be in 'Accepted' state
-    cur.execute("""
-        SELECT id FROM order_history
-        WHERE id = ?
-          AND rider_id = ?
-          AND LOWER(TRIM(rider_status)) = 'accepted'
-    """, (order_id, rider_id))
-
-    if not cur.fetchone():
-        conn.close()
-        return redirect("/rider_dashboard")
-
-    cur.execute("""
-        UPDATE order_history
-        SET rider_status = 'Picked', status = 'Out for Delivery'
-        WHERE id = ?
-    """, (order_id,))
-
-    conn.commit()
-    conn.close()
-    return redirect("/rider_dashboard")
-#----------------DELIVERY ROUTE--------------------------
-@app.route("/get_delivery_route/<int:order_id>")
-def get_delivery_route(order_id):
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT customer_lat, customer_lng, rider_id
-        FROM order_history
-        WHERE id=?
-    """, (order_id,))
-
-    order = cursor.fetchone()
-
-    cursor.execute("""
-        SELECT r.id, r.name, l.latitude, l.longitude
-        FROM riders r
-        LEFT JOIN rider_location l ON r.id = l.rider_id
-        WHERE r.status='Approved'
-    """)
-
-    riders = [dict(r) for r in cursor.fetchall()]
-    conn.close()
-
-    if not order:
-        return jsonify({"error": "not found"}), 404
-
-    return jsonify({
-        "customer_lat": order["customer_lat"],
-        "customer_lng": order["customer_lng"],
-        "assigned_rider": order["rider_id"],
-        "riders": riders
-    })
-	
-@app.route("/get_order_rider/<int:order_id>")
-def get_order_rider(order_id):
-
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT 
-            oh.id,
-            oh.rider_id,
-            oh.rider_status,
-
-            a.latitude AS cust_lat,
-            a.longitude AS cust_lng,
-
-            rl.latitude AS rider_lat,
-            rl.longitude AS rider_lng,
-
-            r.name AS rider_name,
-            r.phone AS rider_phone
-
-        FROM order_history oh
-
-        LEFT JOIN users u ON u.id = oh.user_id
-        LEFT JOIN rider_location rl ON rl.rider_id = oh.rider_id
-		left join addresses a on a.user_id=u.id 
-        LEFT JOIN riders r ON r.id = oh.rider_id
-
-        WHERE oh.id = ?
-    """, (order_id,))
-
-    row = cursor.fetchone()
-    conn.close()
-
-    if not row:
-        return {}
-
-    return dict(row)
-
-
-# ── VERIFY DELIVERY OTP ──────────────────────────────────────
-#
-#  Rider enters OTP given by customer.
-#  On success: calculate distance, compute earnings (₹7/km),
-#  mark order Delivered.
-#
-@app.route("/verify_delivery/<int:order_id>", methods=["GET", "POST"])
-def verify_delivery(order_id):
-    if "rider" not in session:
-        return redirect("/rider_login")
-
-    rider_id = session["rider"]
-
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
-
-    try:
-        if request.method == "POST":
-            otp_entered = request.form.get("otp", "").strip()
-
-            cur.execute("""
-                SELECT delivery_otp, pickup_lat, pickup_lng,
-                       customer_lat, customer_lng
-                FROM order_history
-                WHERE id = ? AND rider_id = ?
-                  AND LOWER(TRIM(rider_status)) = 'picked'
-            """, (order_id, rider_id))
-
-            order = cur.fetchone()
-
-            if not order:
-                flash("Order not found.", "danger")
-                return redirect("/rider_dashboard")
-
-            if str(order["delivery_otp"]).strip() == otp_entered:
-                distance = calculate_distance(
-                    float(order["pickup_lat"]),  float(order["pickup_lng"]),
-                    float(order["customer_lat"]), float(order["customer_lng"])
-                )
-                earning = round(distance * 7, 2)
-
-                cur.execute("""
-                    UPDATE order_history
-                    SET rider_status   = 'Delivered',
-                        status         = 'Delivered',
-                        is_otp_verified = 1,
-                        distance_km    = ?,
-                        rider_earnings = ?
-                    WHERE id = ?
-                """, (round(distance, 2), earning, order_id))
-
-                conn.commit()
-                flash(f"✅ Delivered! You earned ₹{earning}", "success")
-                return redirect("/rider_dashboard")
-            else:
-                flash("❌ Invalid OTP. Try again.", "danger")
-
-        return render_template("verify_otp.html", order_id=order_id)
-
-    finally:
-        conn.close()
-
-
-# ── UPDATE RIDER LOCATION (GPS ping every 10 s from JS) ──────
-@app.route("/update_rider_location", methods=["POST"])
-def update_rider_location():
-    if "rider" not in session:
-        return jsonify({"status": "error"})
-
-    rider_id = session["rider"]
-    data = request.get_json()
-    lat  = data.get("lat")
-    lng  = data.get("lng")
-
-    conn = sqlite3.connect("database.db")
-    cur  = conn.cursor()
-
-    cur.execute("SELECT rider_id FROM rider_location WHERE rider_id=?", (rider_id,))
-    if cur.fetchone():
-        cur.execute("""
-            UPDATE rider_location
-            SET latitude=?, longitude=?, updated_at=CURRENT_TIMESTAMP
-            WHERE rider_id=?
-        """, (lat, lng, rider_id))
-    else:
-        cur.execute("""
-            INSERT INTO rider_location (rider_id, latitude, longitude)
-            VALUES (?, ?, ?)
-        """, (rider_id, lat, lng))
-
-    conn.commit()
-    conn.close()
-    return jsonify({"status": "ok"})
-
-
-# ── GET RIDER LOCATIONS (admin / customer map use) ───────────
-@app.route("/get_rider_locations")
-def get_rider_locations():
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT rider_id AS id, latitude AS lat, longitude AS lng
-        FROM rider_location
-    """)
-    data = [dict(r) for r in cur.fetchall()]
-    conn.close()
-    return jsonify(data)
-
-
-# ── RIDER LOGOUT ─────────────────────────────────────────────
-@app.route("/rider_logout")
-def rider_logout():
-    session.pop("rider", None)
-    return redirect("/rider_login")
-
-
-# ---------------- LOGOUT ----------------
-@app.route("/logout")
-def logout():
-    session.pop("user", None)
-    flash("User logged out successfully", "success")
-    return redirect("/")
-
-
-
+# ─────────────────────────────────────────────
+# SOCKETIO
+# ─────────────────────────────────────────────
 @socketio.on('message')
 def handle_message(msg):
     print('Message received:', msg)
     emit('response', f'Server received: {msg}')
 
+
+# ─────────────────────────────────────────────
+# RUN
+# ─────────────────────────────────────────────
 if __name__ == '__main__':
     socketio.run(app, host="0.0.0.0", port=5000, debug=True)
-#if __name__ == '__main__':
-#    socketio.run(app, debug=True)
